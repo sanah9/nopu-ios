@@ -57,10 +57,13 @@ struct CreateSubscriptionView: View {
                 }
                 
                 Section {
-                    HStack {
+                    HStack(spacing: 12) {
                         Text("Use another push server")
-                        Spacer()
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Toggle("", isOn: $useAnotherServer)
+                            .fixedSize()
                     }
                 }
                 
@@ -75,10 +78,13 @@ struct CreateSubscriptionView: View {
                 
                 // Basic Push Options
                 Section {
-                    HStack {
+                    HStack(spacing: 12) {
                         Text("Enable basic push options")
-                        Spacer()
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Toggle("", isOn: $enableBasicOptions)
+                            .fixedSize()
                     }
                 }
                 
@@ -91,82 +97,91 @@ struct CreateSubscriptionView: View {
                     }
                     
                     Section("Interaction Notifications") {
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Like notifications")
                                 Text("Notify when someone likes your notes")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnLikes)
+                                .fixedSize()
                         }
                         
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Repost notifications")
                                 Text("Notify when someone reposts your notes")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnReposts)
+                                .fixedSize()
                         }
                         
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Reply notifications")
                                 Text("Notify when someone replies to your notes")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnReplies)
+                                .fixedSize()
                         }
                         
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Zap notifications")
                                 Text("Notify when someone sends you a zap")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnZaps)
+                                .fixedSize()
                         }
                     }
                     
                     Section("Social Notifications") {
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Following posts")
                                 Text("Notify when people you follow post new notes")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnFollowsPosts)
+                                .fixedSize()
                         }
                         
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Direct messages")
                                 Text("Notify when you receive direct messages")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $notifyOnDMs)
+                                .fixedSize()
                         }
                     }
                 }
                 
                 // Advanced Filters
                 Section {
-                    HStack {
+                    HStack(spacing: 12) {
                         Text("Enable advanced filters")
-                        Spacer()
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Toggle("", isOn: $useAdvancedFilters)
+                            .fixedSize()
                     }
                 }
                 
