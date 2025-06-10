@@ -160,58 +160,6 @@ struct CreateSubscriptionView: View {
                     }
                 } // End of "Use basic push options" DisclosureGroup
                 
-                // Current Filter Preview
-                if !unifiedFilter.isEmpty {
-                    Section("Current Filter") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if !unifiedFilter.kinds.isEmpty {
-                                HStack {
-                                    Text("Kinds:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(unifiedFilter.kinds.map(String.init).joined(separator: ", "))
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                            
-                            ForEach(unifiedFilter.tags) { tag in
-                                HStack {
-                                    Text("#\(tag.key):")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(tag.values.joined(separator: ", "))
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                            
-                            if !unifiedFilter.authors.isEmpty {
-                                HStack {
-                                    Text("Authors:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text("\(unifiedFilter.authors.count) pubkeys")
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                            
-                            if unifiedFilter.sinceDate != nil || unifiedFilter.untilDate != nil {
-                                HStack {
-                                    Text("Time range:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(formatTimeRange())
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-                
                 // Advanced Filters
                 DisclosureGroup("Use advanced filters", isExpanded: $useAdvancedFilters) {
                     // Event IDs
@@ -579,21 +527,7 @@ struct CreateSubscriptionView: View {
         newTagValue = ""
     }
     
-    private func formatTimeRange() -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        
-        var range = ""
-        if let since = unifiedFilter.sinceDate {
-            range += "from \(formatter.string(from: since))"
-        }
-        if let until = unifiedFilter.untilDate {
-            if !range.isEmpty { range += " " }
-            range += "until \(formatter.string(from: until))"
-        }
-        return range
-    }
+
     
     private func buildNostrFilter() -> [String: Any] {
         // If basic options are selected, build basic filter, otherwise use advanced filter
