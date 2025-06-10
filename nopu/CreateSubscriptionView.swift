@@ -56,39 +56,15 @@ struct CreateSubscriptionView: View {
                         .disableAutocorrection(true)
                 }
                 
-                Section {
-                    HStack(spacing: 12) {
-                        Text("Use another push server")
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Toggle("", isOn: $useAnotherServer)
-                            .fixedSize()
-                    }
-                }
-                
-                if useAnotherServer {
-                    Section {
-                        TextField("Push server URL, e.g. https://nopu.sh", text: $serverURL)
-                            .keyboardType(.URL)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
+                DisclosureGroup("Use another push server", isExpanded: $useAnotherServer) {
+                    TextField("Push server URL, e.g. https://nopu.sh", text: $serverURL)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                 }
                 
                 // Basic Push Options
-                Section {
-                    HStack(spacing: 12) {
-                        Text("Enable basic push options")
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Toggle("", isOn: $enableBasicOptions)
-                            .fixedSize()
-                    }
-                }
-                
-                if enableBasicOptions {
+                DisclosureGroup("Use basic push options", isExpanded: $enableBasicOptions) {
                     Section("User Public Key") {
                         TextField("Enter your public key (hex format)", text: $userPubkey)
                             .font(.system(.caption, design: .monospaced))
@@ -174,18 +150,7 @@ struct CreateSubscriptionView: View {
                 }
                 
                 // Advanced Filters
-                Section {
-                    HStack(spacing: 12) {
-                        Text("Enable advanced filters")
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Toggle("", isOn: $useAdvancedFilters)
-                            .fixedSize()
-                    }
-                }
-                
-                if useAdvancedFilters {
+                DisclosureGroup("Use advanced filters", isExpanded: $useAdvancedFilters) {
                     // Event IDs
                     Section("Event IDs") {
                         ForEach(eventIds.indices, id: \.self) { index in
