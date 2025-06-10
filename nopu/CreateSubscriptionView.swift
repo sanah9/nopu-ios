@@ -21,30 +21,41 @@ struct CreateSubscriptionView: View {
     @State private var notifyOnZaps = false
     @State private var notifyOnFollowsPosts = false
     @State private var notifyOnDMs = false
-    @State private var userPubkey = "" // User's public key for filtering related events
+    @State private var userPubkey = ""
     
-    // Nostr filter related states
+    // UI state for advanced filters
     @State private var useAdvancedFilters = false
-    @State private var eventIds: [String] = []
     @State private var newEventId = ""
-    @State private var authors: [String] = []
     @State private var newAuthor = ""
-    @State private var kinds: [Int] = []
     @State private var newKind = ""
-    @State private var tags: [TagFilter] = []
     @State private var newTagKey = ""
     @State private var newTagValue = ""
-    @State private var sinceDate: Date? = nil
-    @State private var untilDate: Date? = nil
     @State private var useSinceDate = false
     @State private var useUntilDate = false
-    @State private var relays: [String] = []
     @State private var newRelay = ""
     
     struct TagFilter: Identifiable {
         let id = UUID()
         var key: String
         var values: [String]
+    }
+    
+    // Unified filter structure
+    @State private var unifiedFilter = NostrFilter()
+    
+    struct NostrFilter {
+        var eventIds: [String] = []
+        var authors: [String] = []
+        var kinds: [Int] = []
+        var tags: [TagFilter] = []
+        var sinceDate: Date? = nil
+        var untilDate: Date? = nil
+        var relays: [String] = []
+        
+        var isEmpty: Bool {
+            return eventIds.isEmpty && authors.isEmpty && kinds.isEmpty && 
+                   tags.isEmpty && sinceDate == nil && untilDate == nil
+        }
     }
     
     var body: some View {
@@ -149,18 +160,70 @@ struct CreateSubscriptionView: View {
                     }
                 }
                 
+                // Current Filter Preview
+                if !unifiedFilter.isEmpty {
+                    Section("Current Filter") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if !unifiedFilter.kinds.isEmpty {
+                                HStack {
+                                    Text("Kinds:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(unifiedFilter.kinds.map(String.init).joined(separator: ", "))
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            
+                            ForEach(unifiedFilter.tags) { tag in
+                                HStack {
+                                    Text("#\(tag.key):")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(tag.values.joined(separator: ", "))
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            
+                            if !unifiedFilter.authors.isEmpty {
+                                HStack {
+                                    Text("Authors:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text("\(unifiedFilter.authors.count) pubkeys")
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            
+                            if unifiedFilter.sinceDate != nil || unifiedFilter.untilDate != nil {
+                                HStack {
+                                    Text("Time range:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(formatTimeRange())
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                
                 // Advanced Filters
                 DisclosureGroup("Use advanced filters", isExpanded: $useAdvancedFilters) {
                     // Event IDs
                     Section("Event IDs") {
-                        ForEach(eventIds.indices, id: \.self) { index in
+                        ForEach(unifiedFilter.eventIds.indices, id: \.self) { index in
                             HStack {
-                                Text(eventIds[index])
+                                Text(unifiedFilter.eventIds[index])
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Button("Remove") {
-                                    eventIds.remove(at: index)
+                                    unifiedFilter.eventIds.remove(at: index)
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
@@ -172,7 +235,7 @@ struct CreateSubscriptionView: View {
                                 .disableAutocorrection(true)
                             Button("Add") {
                                 if !newEventId.isEmpty {
-                                    eventIds.append(newEventId)
+                                    unifiedFilter.eventIds.append(newEventId)
                                     newEventId = ""
                                 }
                             }
@@ -182,14 +245,14 @@ struct CreateSubscriptionView: View {
                     
                     // Author Pubkeys
                     Section("Author Pubkeys") {
-                        ForEach(authors.indices, id: \.self) { index in
+                        ForEach(unifiedFilter.authors.indices, id: \.self) { index in
                             HStack {
-                                Text(authors[index])
+                                Text(unifiedFilter.authors[index])
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Button("Remove") {
-                                    authors.remove(at: index)
+                                    unifiedFilter.authors.remove(at: index)
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
@@ -201,7 +264,7 @@ struct CreateSubscriptionView: View {
                                 .disableAutocorrection(true)
                             Button("Add") {
                                 if !newAuthor.isEmpty {
-                                    authors.append(newAuthor)
+                                    unifiedFilter.authors.append(newAuthor)
                                     newAuthor = ""
                                 }
                             }
@@ -211,13 +274,13 @@ struct CreateSubscriptionView: View {
                     
                     // Kinds
                     Section("Event Kinds") {
-                        ForEach(kinds.indices, id: \.self) { index in
+                        ForEach(unifiedFilter.kinds.indices, id: \.self) { index in
                             HStack {
-                                Text("\(kinds[index])")
+                                Text("\(unifiedFilter.kinds[index])")
                                     .foregroundColor(.secondary)
                                 Spacer()
                                 Button("Remove") {
-                                    kinds.remove(at: index)
+                                    unifiedFilter.kinds.remove(at: index)
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
@@ -230,7 +293,8 @@ struct CreateSubscriptionView: View {
                                 .disableAutocorrection(true)
                             Button("Add") {
                                 if let kind = Int(newKind) {
-                                    kinds.append(kind)
+                                    unifiedFilter.kinds.append(kind)
+                                    unifiedFilter.kinds.sort()
                                     newKind = ""
                                 }
                             }
@@ -240,14 +304,14 @@ struct CreateSubscriptionView: View {
                     
                     // Tag Filters
                     Section("Tag Filters") {
-                        ForEach(tags) { tag in
+                        ForEach(unifiedFilter.tags) { tag in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("#\(tag.key)")
                                         .font(.headline)
                                     Spacer()
                                     Button("Remove tag") {
-                                        tags.removeAll { $0.id == tag.id }
+                                        unifiedFilter.tags.removeAll { $0.id == tag.id }
                                     }
                                     .foregroundColor(.red)
                                     .font(.caption)
@@ -289,8 +353,8 @@ struct CreateSubscriptionView: View {
                         
                         if useSinceDate {
                             DatePicker("Start time", selection: Binding(
-                                get: { sinceDate ?? Date() },
-                                set: { sinceDate = $0 }
+                                get: { unifiedFilter.sinceDate ?? Date() },
+                                set: { unifiedFilter.sinceDate = $0 }
                             ), displayedComponents: [.date, .hourAndMinute])
                         }
                         
@@ -302,18 +366,18 @@ struct CreateSubscriptionView: View {
                         
                         if useUntilDate {
                             DatePicker("End time", selection: Binding(
-                                get: { untilDate ?? Date() },
-                                set: { untilDate = $0 }
+                                get: { unifiedFilter.untilDate ?? Date() },
+                                set: { unifiedFilter.untilDate = $0 }
                             ), displayedComponents: [.date, .hourAndMinute])
                         }
                     }
                     
                     // Relay Servers
                     Section("Relay Servers") {
-                        ForEach(relays.indices, id: \.self) { index in
+                        ForEach(unifiedFilter.relays.indices, id: \.self) { index in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(relays[index])
+                                    Text(unifiedFilter.relays[index])
                                         .font(.system(.body, design: .monospaced))
                                     Text("Relay #\(index + 1)")
                                         .font(.caption2)
@@ -321,7 +385,7 @@ struct CreateSubscriptionView: View {
                                 }
                                 Spacer()
                                 Button("Remove") {
-                                    relays.remove(at: index)
+                                    unifiedFilter.relays.remove(at: index)
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
@@ -335,20 +399,41 @@ struct CreateSubscriptionView: View {
                                 .disableAutocorrection(true)
                             Button("Add") {
                                 if !newRelay.isEmpty && isValidWebSocketURL(newRelay) {
-                                    relays.append(newRelay)
+                                    unifiedFilter.relays.append(newRelay)
                                     newRelay = ""
                                 }
                             }
                             .disabled(newRelay.isEmpty || !isValidWebSocketURL(newRelay))
                         }
                         
-                        if relays.isEmpty {
+                        if unifiedFilter.relays.isEmpty {
                             Text("Default server will be used when no relays are specified")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
+            }
+            .onChange(of: notifyOnLikes) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: notifyOnReposts) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: notifyOnReplies) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: notifyOnZaps) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: notifyOnFollowsPosts) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: notifyOnDMs) {
+                syncBasicOptionsToAdvancedFilters()
+            }
+            .onChange(of: userPubkey) {
+                syncBasicOptionsToAdvancedFilters()
             }
             .navigationTitle("Add subscription")
             .navigationBarTitleDisplayMode(.inline)
@@ -369,9 +454,109 @@ struct CreateSubscriptionView: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.secondary)
-                    .disabled(topicName.isEmpty || (enableBasicOptions && userPubkey.isEmpty))
+                    .disabled(topicName.isEmpty || (hasBasicOptionsSelected() && userPubkey.isEmpty))
                 }
             }
+        }
+    }
+    
+    private func syncBasicOptionsToAdvancedFilters() {
+        // Clear previous sync settings while preserving manually added settings
+        let basicKinds: Set<Int> = [1, 6, 7, 1059, 9735]
+        var newKinds: Set<Int> = Set(unifiedFilter.kinds.filter { !basicKinds.contains($0) })
+        var newTags: [TagFilter] = unifiedFilter.tags.compactMap { tag in
+            if tag.key == "p" && !userPubkey.isEmpty {
+                let filteredValues = tag.values.filter { $0 != userPubkey }
+                if filteredValues.isEmpty {
+                    return nil
+                } else {
+                    return TagFilter(key: tag.key, values: filteredValues)
+                }
+            }
+            return tag
+        }
+        
+        // Re-add filters based on basic options
+        // Like notifications (kind 7, #p tag)
+        if notifyOnLikes {
+            newKinds.insert(7)
+        }
+        
+        // Repost notifications (kind 6, #p tag)  
+        if notifyOnReposts {
+            newKinds.insert(6)
+        }
+        
+        // Reply notifications (kind 1, #p tag)
+        if notifyOnReplies {
+            newKinds.insert(1)
+        }
+        
+        // Zap notifications (kind 9735, #p tag)
+        if notifyOnZaps {
+            newKinds.insert(9735)
+        }
+        
+        // Following posts (kind 1)
+        if notifyOnFollowsPosts {
+            newKinds.insert(1)
+            // Note: Need to get user's following list, only adding kind for now
+        }
+        
+        // Direct message notifications (kind 1059, #p tag)
+        if notifyOnDMs {
+            newKinds.insert(1059)
+        }
+        
+        // Add user pubkey to #p tag if any notification type is selected and pubkey is provided
+        if !userPubkey.isEmpty && (notifyOnLikes || notifyOnReposts || notifyOnReplies || notifyOnZaps || notifyOnDMs) {
+            setUserPubkeyTag(&newTags, value: userPubkey)
+        }
+        
+        // Update unified filter
+        unifiedFilter.kinds = Array(newKinds).sorted()
+        unifiedFilter.tags = newTags
+    }
+    
+    private func addOrUpdateTag(_ tags: inout [TagFilter], key: String, value: String) {
+        if let existingIndex = tags.firstIndex(where: { $0.key == key }) {
+            if !tags[existingIndex].values.contains(value) {
+                tags[existingIndex].values.append(value)
+            }
+        } else {
+            tags.append(TagFilter(key: key, values: [value]))
+        }
+    }
+    
+    private func setUserPubkeyTag(_ tags: inout [TagFilter], value: String) {
+        // Remove existing p tag for user pubkey
+        tags.removeAll { $0.key == "p" }
+        // Add new p tag with user pubkey
+        tags.append(TagFilter(key: "p", values: [value]))
+    }
+    
+    private func hasBasicOptionsSelected() -> Bool {
+        return notifyOnLikes || notifyOnReposts || notifyOnReplies || 
+               notifyOnZaps || notifyOnFollowsPosts || notifyOnDMs || 
+               !userPubkey.isEmpty
+    }
+    
+    private func clearSyncedFilters() {
+        // Clear filter settings generated by basic options sync
+        let basicKinds: Set<Int> = [1, 6, 7, 1059, 9735]
+        unifiedFilter.kinds = unifiedFilter.kinds.filter { !basicKinds.contains($0) }
+        
+        // Remove p tags related to user pubkey
+        unifiedFilter.tags = unifiedFilter.tags.compactMap { tag in
+            if tag.key == "p" {
+                let filteredValues = tag.values.filter { $0 != userPubkey }
+                if filteredValues.isEmpty {
+                    return nil
+                } else {
+                    return TagFilter(key: tag.key, values: filteredValues)
+                }
+            }
+            return tag
         }
     }
     
@@ -379,19 +564,35 @@ struct CreateSubscriptionView: View {
         let key = newTagKey.lowercased()
         let value = newTagValue
         
-        if let existingIndex = tags.firstIndex(where: { $0.key == key }) {
-            tags[existingIndex].values.append(value)
+        if let existingIndex = unifiedFilter.tags.firstIndex(where: { $0.key == key }) {
+            unifiedFilter.tags[existingIndex].values.append(value)
         } else {
-            tags.append(TagFilter(key: key, values: [value]))
+            unifiedFilter.tags.append(TagFilter(key: key, values: [value]))
         }
         
         newTagKey = ""
         newTagValue = ""
     }
     
+    private func formatTimeRange() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        
+        var range = ""
+        if let since = unifiedFilter.sinceDate {
+            range += "from \(formatter.string(from: since))"
+        }
+        if let until = unifiedFilter.untilDate {
+            if !range.isEmpty { range += " " }
+            range += "until \(formatter.string(from: until))"
+        }
+        return range
+    }
+    
     private func buildNostrFilter() -> [String: Any] {
-        // If basic options are enabled, build basic filter, otherwise use advanced filter
-        if enableBasicOptions {
+        // If basic options are selected, build basic filter, otherwise use advanced filter
+        if hasBasicOptionsSelected() {
             return buildBasicFilter()
         } else {
             return buildAdvancedFilter()
@@ -474,27 +675,27 @@ struct CreateSubscriptionView: View {
     private func buildAdvancedFilter() -> [String: Any] {
         var filter: [String: Any] = [:]
         
-        if !eventIds.isEmpty {
-            filter["ids"] = eventIds
+        if !unifiedFilter.eventIds.isEmpty {
+            filter["ids"] = unifiedFilter.eventIds
         }
         
-        if !authors.isEmpty {
-            filter["authors"] = authors
+        if !unifiedFilter.authors.isEmpty {
+            filter["authors"] = unifiedFilter.authors
         }
         
-        if !kinds.isEmpty {
-            filter["kinds"] = kinds
+        if !unifiedFilter.kinds.isEmpty {
+            filter["kinds"] = unifiedFilter.kinds
         }
         
-        for tag in tags {
+        for tag in unifiedFilter.tags {
             filter["#\(tag.key)"] = tag.values
         }
         
-        if useSinceDate, let since = sinceDate {
+        if useSinceDate, let since = unifiedFilter.sinceDate {
             filter["since"] = Int(since.timeIntervalSince1970)
         }
         
-        if useUntilDate, let until = untilDate {
+        if useUntilDate, let until = unifiedFilter.untilDate {
             filter["until"] = Int(until.timeIntervalSince1970)
         }
         
@@ -507,8 +708,8 @@ struct CreateSubscriptionView: View {
         config["topic"] = topicName
         config["filter"] = buildNostrFilter()
         
-        if !relays.isEmpty {
-            config["relays"] = relays
+        if !unifiedFilter.relays.isEmpty {
+            config["relays"] = unifiedFilter.relays
         }
         
         if useAnotherServer {
