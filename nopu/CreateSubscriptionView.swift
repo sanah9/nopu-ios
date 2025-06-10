@@ -39,230 +39,235 @@ struct CreateSubscriptionView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                Form {
-                    // Basic Settings
-                    Section("Basic Settings") {
-                        TextField("Topic name, e.g. nopu_alerts", text: $topicName)
+            Form {
+                // Basic Settings
+                Section("Basic Settings") {
+                    TextField("Topic name, e.g. nopu_alerts", text: $topicName)
+                        .disableAutocorrection(true)
+                }
+                
+                Section {
+                    HStack {
+                        Text("Use another push server")
+                        Spacer()
+                        Toggle("", isOn: $useAnotherServer)
                     }
-                    
+                }
+                
+                if useAnotherServer {
                     Section {
+                        TextField("Push server URL, e.g. https://nopu.sh", text: $serverURL)
+                            .keyboardType(.URL)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+                }
+                
+                // Advanced Filters
+                Section {
+                    HStack {
+                        Text("Enable advanced filters (Nostr filter)")
+                        Spacer()
+                        Toggle("", isOn: $useAdvancedFilters)
+                    }
+                }
+                
+                if useAdvancedFilters {
+                    // Event IDs
+                    Section("Event IDs") {
+                        ForEach(eventIds.indices, id: \.self) { index in
+                            HStack {
+                                Text(eventIds[index])
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button("Remove") {
+                                    eventIds.remove(at: index)
+                                }
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            }
+                        }
+                        
                         HStack {
-                            Text("Use another push server")
-                            Spacer()
-                            Toggle("", isOn: $useAnotherServer)
+                            TextField("Add event ID", text: $newEventId)
+                                .disableAutocorrection(true)
+                            Button("Add") {
+                                if !newEventId.isEmpty {
+                                    eventIds.append(newEventId)
+                                    newEventId = ""
+                                }
+                            }
+                            .disabled(newEventId.isEmpty)
                         }
                     }
                     
-                    if useAnotherServer {
-                        Section {
-                            TextField("Push server URL, e.g. https://nopu.sh", text: $serverURL)
+                    // Author Pubkeys
+                    Section("Author Pubkeys") {
+                        ForEach(authors.indices, id: \.self) { index in
+                            HStack {
+                                Text(authors[index])
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button("Remove") {
+                                    authors.remove(at: index)
+                                }
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            }
+                        }
+                        
+                        HStack {
+                            TextField("Add author pubkey", text: $newAuthor)
+                                .disableAutocorrection(true)
+                            Button("Add") {
+                                if !newAuthor.isEmpty {
+                                    authors.append(newAuthor)
+                                    newAuthor = ""
+                                }
+                            }
+                            .disabled(newAuthor.isEmpty)
+                        }
+                    }
+                    
+                    // Kinds
+                    Section("Event Kinds") {
+                        ForEach(kinds.indices, id: \.self) { index in
+                            HStack {
+                                Text("\(kinds[index])")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button("Remove") {
+                                    kinds.remove(at: index)
+                                }
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            }
+                        }
+                        
+                        HStack {
+                            TextField("Add kind number", text: $newKind)
+                                .keyboardType(.numberPad)
+                                .disableAutocorrection(true)
+                            Button("Add") {
+                                if let kind = Int(newKind) {
+                                    kinds.append(kind)
+                                    newKind = ""
+                                }
+                            }
+                            .disabled(newKind.isEmpty)
+                        }
+                    }
+                    
+                    // Tag Filters
+                    Section("Tag Filters") {
+                        ForEach(tags) { tag in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("#\(tag.key)")
+                                        .font(.headline)
+                                    Spacer()
+                                    Button("Remove tag") {
+                                        tags.removeAll { $0.id == tag.id }
+                                    }
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                                }
+                                
+                                ForEach(tag.values, id: \.self) { value in
+                                    Text("  • \(value)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        
+                        VStack(spacing: 8) {
+                            HStack {
+                                TextField("Tag key (a-z)", text: $newTagKey)
+                                    .textInputAutocapitalization(.never)
+                                    .disableAutocorrection(true)
+                                TextField("Tag value", text: $newTagValue)
+                                    .disableAutocorrection(true)
+                            }
+                            HStack {
+                                Spacer()
+                                Button("Add") {
+                                    addTagFilter()
+                                }
+                                .disabled(newTagKey.isEmpty || newTagValue.isEmpty)
+                            }
+                        }
+                    }
+                    
+                    // Time Range
+                    Section("Time Range") {
+                        HStack {
+                            Text("Set start time")
+                            Spacer()
+                            Toggle("", isOn: $useSinceDate)
+                        }
+                        
+                        if useSinceDate {
+                            DatePicker("Start time", selection: Binding(
+                                get: { sinceDate ?? Date() },
+                                set: { sinceDate = $0 }
+                            ), displayedComponents: [.date, .hourAndMinute])
+                        }
+                        
+                        HStack {
+                            Text("Set end time")
+                            Spacer()
+                            Toggle("", isOn: $useUntilDate)
+                        }
+                        
+                        if useUntilDate {
+                            DatePicker("End time", selection: Binding(
+                                get: { untilDate ?? Date() },
+                                set: { untilDate = $0 }
+                            ), displayedComponents: [.date, .hourAndMinute])
+                        }
+                    }
+                    
+                    // Relay Servers
+                    Section("Relay Servers") {
+                        ForEach(relays.indices, id: \.self) { index in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(relays[index])
+                                        .font(.system(.body, design: .monospaced))
+                                    Text("Relay #\(index + 1)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Remove") {
+                                    relays.remove(at: index)
+                                }
+                                .foregroundColor(.red)
+                                .font(.caption)
+                            }
+                        }
+                        
+                        HStack {
+                            TextField("e.g. wss://relay.damus.io", text: $newRelay)
                                 .keyboardType(.URL)
                                 .autocapitalization(.none)
-                        }
-                    }
-                    
-                    // Advanced Filters
-                    Section {
-                        HStack {
-                            Text("Enable advanced filters (Nostr filter)")
-                            Spacer()
-                            Toggle("", isOn: $useAdvancedFilters)
-                        }
-                    }
-                    
-                    if useAdvancedFilters {
-                        // Event IDs
-                        Section("Event IDs") {
-                            ForEach(eventIds.indices, id: \.self) { index in
-                                HStack {
-                                    Text(eventIds[index])
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Button("Remove") {
-                                        eventIds.remove(at: index)
-                                    }
-                                    .foregroundColor(.red)
-                                    .font(.caption)
+                                .disableAutocorrection(true)
+                            Button("Add") {
+                                if !newRelay.isEmpty && isValidWebSocketURL(newRelay) {
+                                    relays.append(newRelay)
+                                    newRelay = ""
                                 }
                             }
-                            
-                            HStack {
-                                TextField("Add event ID", text: $newEventId)
-                                Button("Add") {
-                                    if !newEventId.isEmpty {
-                                        eventIds.append(newEventId)
-                                        newEventId = ""
-                                    }
-                                }
-                                .disabled(newEventId.isEmpty)
-                            }
+                            .disabled(newRelay.isEmpty || !isValidWebSocketURL(newRelay))
                         }
                         
-                        // Author Pubkeys
-                        Section("Author Pubkeys") {
-                            ForEach(authors.indices, id: \.self) { index in
-                                HStack {
-                                    Text(authors[index])
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Button("Remove") {
-                                        authors.remove(at: index)
-                                    }
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                                }
-                            }
-                            
-                            HStack {
-                                TextField("Add author pubkey", text: $newAuthor)
-                                Button("Add") {
-                                    if !newAuthor.isEmpty {
-                                        authors.append(newAuthor)
-                                        newAuthor = ""
-                                    }
-                                }
-                                .disabled(newAuthor.isEmpty)
-                            }
-                        }
-                        
-                        // Kinds
-                        Section("Event Kinds") {
-                            ForEach(kinds.indices, id: \.self) { index in
-                                HStack {
-                                    Text("\(kinds[index])")
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Button("Remove") {
-                                        kinds.remove(at: index)
-                                    }
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                                }
-                            }
-                            
-                            HStack {
-                                TextField("Add kind number", text: $newKind)
-                                    .keyboardType(.numberPad)
-                                Button("Add") {
-                                    if let kind = Int(newKind) {
-                                        kinds.append(kind)
-                                        newKind = ""
-                                    }
-                                }
-                                .disabled(newKind.isEmpty)
-                            }
-                        }
-                        
-                        // Tag Filters
-                        Section("Tag Filters") {
-                            ForEach(tags) { tag in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text("#\(tag.key)")
-                                            .font(.headline)
-                                        Spacer()
-                                        Button("Remove tag") {
-                                            tags.removeAll { $0.id == tag.id }
-                                        }
-                                        .foregroundColor(.red)
-                                        .font(.caption)
-                                    }
-                                    
-                                    ForEach(tag.values, id: \.self) { value in
-                                        Text("  • \(value)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                            
-                            VStack(spacing: 8) {
-                                HStack(spacing: 8) {
-                                    TextField("Tag key (a-z)", text: $newTagKey)
-                                        .textInputAutocapitalization(.never)
-                                        .frame(maxWidth: 120)
-                                    TextField("Tag value", text: $newTagValue)
-                                }
-                                HStack {
-                                    Spacer()
-                                    Button("Add") {
-                                        addTagFilter()
-                                    }
-                                    .disabled(newTagKey.isEmpty || newTagValue.isEmpty)
-                                }
-                            }
-                        }
-                        
-                        // Time Range
-                        Section("Time Range") {
-                            HStack {
-                                Text("Set start time")
-                                Spacer()
-                                Toggle("", isOn: $useSinceDate)
-                            }
-                            
-                            if useSinceDate {
-                                DatePicker("Start time", selection: Binding(
-                                    get: { sinceDate ?? Date() },
-                                    set: { sinceDate = $0 }
-                                ), displayedComponents: [.date, .hourAndMinute])
-                            }
-                            
-                            HStack {
-                                Text("Set end time")
-                                Spacer()
-                                Toggle("", isOn: $useUntilDate)
-                            }
-                            
-                            if useUntilDate {
-                                DatePicker("End time", selection: Binding(
-                                    get: { untilDate ?? Date() },
-                                    set: { untilDate = $0 }
-                                ), displayedComponents: [.date, .hourAndMinute])
-                            }
-                        }
-                        
-                        // Relay Servers
-                        Section("Relay Servers") {
-                            ForEach(relays.indices, id: \.self) { index in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(relays[index])
-                                            .font(.system(.body, design: .monospaced))
-                                        Text("Relay #\(index + 1)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Button("Remove") {
-                                        relays.remove(at: index)
-                                    }
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                                }
-                            }
-                            
-                            HStack {
-                                TextField("e.g. wss://relay.damus.io", text: $newRelay)
-                                    .keyboardType(.URL)
-                                    .autocapitalization(.none)
-                                Button("Add") {
-                                    if !newRelay.isEmpty && isValidWebSocketURL(newRelay) {
-                                        relays.append(newRelay)
-                                        newRelay = ""
-                                    }
-                                }
-                                .disabled(newRelay.isEmpty || !isValidWebSocketURL(newRelay))
-                            }
-                            
-                            if relays.isEmpty {
-                                Text("Default server will be used when no relays are specified")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                        if relays.isEmpty {
+                            Text("Default server will be used when no relays are specified")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }

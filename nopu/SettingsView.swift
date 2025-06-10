@@ -11,19 +11,13 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section("GENERAL") {
+                Section(header: Text("GENERAL"), footer: Text("When subscribing to new topics, this server will be used as a default.")) {
                     HStack {
                         Text("Default server")
                         Spacer()
                         Text("nopu.sh")
                             .foregroundColor(.secondary)
                     }
-                }
-                
-                Section {
-                    Text("When subscribing to new topics, this server will be used as a default.")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
                 }
                 
                 Section("ABOUT") {
