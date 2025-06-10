@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Clean shadow -->
+    <filter id="cleanShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+  
+  <!-- Pure white background -->
+  <rect width="1024" height="1024" fill="#ffffff" filter="url(#cleanShadow)"/>
+  
+  <!-- Main "[nopu]" text - much larger -->
+  <text 
+    x="512" 
+    y="550" 
+    text-anchor="middle" 
+    fill="#1a202c" 
+    font-family="SF Mono, Monaco, 'Fira Code', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace" 
+    font-size="240" 
+    font-weight="700"
+    letter-spacing="-8px">[nopu]</text>
+</svg> 
