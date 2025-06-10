@@ -158,7 +158,7 @@ struct CreateSubscriptionView: View {
                                 .fixedSize()
                         }
                     }
-                }
+                } // End of "Use basic push options" DisclosureGroup
                 
                 // Current Filter Preview
                 if !unifiedFilter.isEmpty {
@@ -227,6 +227,7 @@ struct CreateSubscriptionView: View {
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
+                                .buttonStyle(BorderlessButtonStyle())
                             }
                         }
                         
@@ -256,6 +257,7 @@ struct CreateSubscriptionView: View {
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
+                                .buttonStyle(BorderlessButtonStyle())
                             }
                         }
                         
@@ -284,6 +286,7 @@ struct CreateSubscriptionView: View {
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
+                                .buttonStyle(BorderlessButtonStyle())
                             }
                         }
                         
@@ -315,6 +318,7 @@ struct CreateSubscriptionView: View {
                                     }
                                     .foregroundColor(.red)
                                     .font(.caption)
+                                    .buttonStyle(BorderlessButtonStyle())
                                 }
                                 
                                 ForEach(tag.values, id: \.self) { value in
@@ -389,6 +393,7 @@ struct CreateSubscriptionView: View {
                                 }
                                 .foregroundColor(.red)
                                 .font(.caption)
+                                .buttonStyle(BorderlessButtonStyle())
                             }
                         }
                         
