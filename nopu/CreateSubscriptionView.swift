@@ -13,6 +13,16 @@ struct CreateSubscriptionView: View {
     @State private var useAnotherServer = false
     @State private var serverURL = ""
     
+    // Basic push options
+    @State private var enableBasicOptions = false
+    @State private var notifyOnLikes = false
+    @State private var notifyOnReposts = false
+    @State private var notifyOnReplies = false
+    @State private var notifyOnZaps = false
+    @State private var notifyOnFollowsPosts = false
+    @State private var notifyOnDMs = false
+    @State private var userPubkey = "" // User's public key for filtering related events
+    
     // Nostr filter related states
     @State private var useAdvancedFilters = false
     @State private var eventIds: [String] = []
@@ -63,10 +73,98 @@ struct CreateSubscriptionView: View {
                     }
                 }
                 
+                // Basic Push Options
+                Section {
+                    HStack {
+                        Text("Enable basic push options")
+                        Spacer()
+                        Toggle("", isOn: $enableBasicOptions)
+                    }
+                }
+                
+                if enableBasicOptions {
+                    Section("User Public Key") {
+                        TextField("Enter your public key (hex format)", text: $userPubkey)
+                            .font(.system(.caption, design: .monospaced))
+                            .disableAutocorrection(true)
+                            .autocapitalization(.none)
+                    }
+                    
+                    Section("Interaction Notifications") {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Like notifications")
+                                Text("Notify when someone likes your notes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnLikes)
+                        }
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Repost notifications")
+                                Text("Notify when someone reposts your notes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnReposts)
+                        }
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reply notifications")
+                                Text("Notify when someone replies to your notes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnReplies)
+                        }
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Zap notifications")
+                                Text("Notify when someone sends you a zap")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnZaps)
+                        }
+                    }
+                    
+                    Section("Social Notifications") {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Following posts")
+                                Text("Notify when people you follow post new notes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnFollowsPosts)
+                        }
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Direct messages")
+                                Text("Notify when you receive direct messages")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $notifyOnDMs)
+                        }
+                    }
+                }
+                
                 // Advanced Filters
                 Section {
                     HStack {
-                        Text("Enable advanced filters (Nostr filter)")
+                        Text("Enable advanced filters")
                         Spacer()
                         Toggle("", isOn: $useAdvancedFilters)
                     }
@@ -291,7 +389,7 @@ struct CreateSubscriptionView: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.secondary)
-                    .disabled(topicName.isEmpty)
+                    .disabled(topicName.isEmpty || (enableBasicOptions && userPubkey.isEmpty))
                 }
             }
         }
@@ -312,6 +410,88 @@ struct CreateSubscriptionView: View {
     }
     
     private func buildNostrFilter() -> [String: Any] {
+        // If basic options are enabled, build basic filter, otherwise use advanced filter
+        if enableBasicOptions {
+            return buildBasicFilter()
+        } else {
+            return buildAdvancedFilter()
+        }
+    }
+    
+    private func buildBasicFilter() -> [String: Any] {
+        var filters: [[String: Any]] = []
+        
+        guard !userPubkey.isEmpty else {
+            return [:]
+        }
+        
+        // Like notifications (kind 7)
+        if notifyOnLikes {
+            filters.append([
+                "kinds": [7],
+                "#e": [userPubkey], // Assuming userPubkey is also used as event ID
+                "since": Int(Date().timeIntervalSince1970)
+            ])
+        }
+        
+        // Repost notifications (kind 6)
+        if notifyOnReposts {
+            filters.append([
+                "kinds": [6],
+                "#e": [userPubkey],
+                "since": Int(Date().timeIntervalSince1970)
+            ])
+        }
+        
+        // Reply notifications (kind 1, containing user mentions)
+        if notifyOnReplies {
+            filters.append([
+                "kinds": [1],
+                "#p": [userPubkey],
+                "since": Int(Date().timeIntervalSince1970)
+            ])
+        }
+        
+        // Zap notifications (kind 9735)
+        if notifyOnZaps {
+            filters.append([
+                "kinds": [9735],
+                "#p": [userPubkey],
+                "since": Int(Date().timeIntervalSince1970)
+            ])
+        }
+        
+        // Following posts (kind 1) - This requires knowing who the user follows
+        if notifyOnFollowsPosts {
+            // Note: Need to get user's following list, leaving empty for now
+            // In actual implementation, need to first get user's kind 3 event to get following list
+            filters.append([
+                "kinds": [1],
+                "since": Int(Date().timeIntervalSince1970)
+                // "authors": [] // Need to fill in followed users' pubkey list
+            ])
+        }
+        
+        // Direct message notifications (kind 4)
+        if notifyOnDMs {
+            filters.append([
+                "kinds": [4],
+                "#p": [userPubkey],
+                "since": Int(Date().timeIntervalSince1970)
+            ])
+        }
+        
+        // If multiple filters exist, return array; if only one, return single object
+        if filters.count == 1 {
+            return filters[0]
+        } else if filters.count > 1 {
+            return ["filters": filters]
+        } else {
+            return [:]
+        }
+    }
+    
+    private func buildAdvancedFilter() -> [String: Any] {
         var filter: [String: Any] = [:]
         
         if !eventIds.isEmpty {
