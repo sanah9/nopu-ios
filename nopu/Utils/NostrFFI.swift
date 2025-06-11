@@ -513,6 +513,8 @@ public protocol NostrClientProtocol: AnyObject, Sendable {
     
     func getRelayStatus()  -> [RelayInfo]
     
+    func publishEvent(kind: UInt16, content: String, tags: [[String]]?) throws  -> String
+    
     func publishTextNote(content: String, tags: [[String]]?) throws  -> String
     
     func removeRelay(url: String) throws 
@@ -632,6 +634,16 @@ open func getPublicKey()throws  -> String  {
 open func getRelayStatus() -> [RelayInfo]  {
     return try!  FfiConverterSequenceTypeRelayInfo.lift(try! rustCall() {
     uniffi_nopu_rust_ffi_fn_method_nostrclient_get_relay_status(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func publishEvent(kind: UInt16, content: String, tags: [[String]]?)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeNostrError_lift) {
+    uniffi_nopu_rust_ffi_fn_method_nostrclient_publish_event(self.uniffiClonePointer(),
+        FfiConverterUInt16.lower(kind),
+        FfiConverterString.lower(content),
+        FfiConverterOptionSequenceSequenceString.lower(tags),$0
     )
 })
 }
@@ -1768,6 +1780,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nopu_rust_ffi_checksum_method_nostrclient_get_relay_status() != 59030) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_nopu_rust_ffi_checksum_method_nostrclient_publish_event() != 52275) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_nopu_rust_ffi_checksum_method_nostrclient_publish_text_note() != 60289) {

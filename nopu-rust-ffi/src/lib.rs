@@ -377,6 +377,45 @@ impl NostrClient {
             Ok(event_id.to_hex())
         })
     }
+
+    // Generic event building and publishing method - directly wraps send_event
+    pub fn publish_event(&self, kind: u16, content: String, tags: Option<Vec<Vec<String>>>) -> Result<String, NostrError> {
+        self.runtime.block_on(async {
+            // Create event builder for specified kind
+            let mut builder = EventBuilder::new(Kind::from(kind), &content);
+
+            // Add tags if provided
+            if let Some(tag_list) = tags {
+                // Simple conversion from Vec<Vec<String>> to Vec<Tag>
+                let converted_tags: Vec<Tag> = tag_list.into_iter()
+                    .filter_map(|tag_vec| {
+                        if !tag_vec.is_empty() {
+                            Some(Tag::parse(&tag_vec).ok()?)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                
+                if !converted_tags.is_empty() {
+                    builder = builder.tags(converted_tags);
+                }
+            }
+            
+            // Build unsigned event
+            let unsigned_event = builder.build(self.keys.public_key());
+            
+            // Sign event
+            let event = unsigned_event.sign(&self.keys).await
+                .map_err(|e| NostrError::EventCreationFailed(e.to_string()))?;
+            
+            // Publish event using client.send_event
+            let event_id = self.client.send_event(&event).await
+                .map_err(|e| NostrError::EventPublishingFailed(e.to_string()))?;
+            
+            Ok(event_id.to_hex())
+        })
+    }
 }
 
 // Factory functions

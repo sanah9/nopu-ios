@@ -75,6 +75,7 @@ interface NostrClient {
     sequence<RelayInfo> get_relay_status();
     
     [Throws=NostrError] string publish_text_note(string content, sequence<sequence<string>>? tags);
+    [Throws=NostrError] string publish_event(u16 kind, string content, sequence<sequence<string>>? tags);
     [Throws=NostrError] string set_metadata(NostrMetadata metadata);
     
     [Throws=NostrError] sequence<NostrEvent> fetch_events(NostrFilter filter, u64? timeout_seconds);

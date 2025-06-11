@@ -226,8 +226,6 @@ public class NostrUtils: ObservableObject {
         }
     }
     
-
-    
     // MARK: - User Metadata
     
     /**
@@ -291,8 +289,6 @@ public class NostrUtils: ObservableObject {
         }
     }
     
-
-    
     // MARK: - Subscription Management
     
     /**
@@ -324,8 +320,6 @@ public class NostrUtils: ObservableObject {
         }
     }
     
-
-    
     /**
      * Unsubscribe from event stream
      * @param subscriptionId Subscription ID
@@ -345,6 +339,58 @@ public class NostrUtils: ObservableObject {
         } catch {
             self.lastError = "Failed to unsubscribe: \(error.localizedDescription)"
             return false
+        }
+    }
+    
+    // MARK: - Event Management
+    
+    /**
+     * Publish a generic event with specified kind
+     * @param kind Event kind (e.g., 1 for text note, 0 for metadata, etc.)
+     * @param content Event content
+     * @param tags Optional tags array
+     * @return Returns event ID on success, nil on failure
+     */
+    public func publishEvent(kind: UInt16, content: String, tags: [[String]]? = nil) -> String? {
+        guard let client = self.client else {
+            self.lastError = "Client not initialized"
+            return nil
+        }
+        
+        guard isConnected else {
+            self.lastError = "Not connected to relay servers"
+            return nil
+        }
+        
+        do {
+            let eventId = try client.publishEvent(kind: kind, content: content, tags: tags)
+            self.lastError = nil
+            return eventId
+        } catch {
+            self.lastError = "Failed to publish event: \(error.localizedDescription)"
+            return nil
+        }
+    }
+    
+    /**
+     * Fetch events based on filter
+     * @param filter Event filter criteria
+     * @param timeoutSeconds Timeout in seconds
+     * @return Array of events matching the filter
+     */
+    public func fetchEvents(filter: NostrFilter, timeoutSeconds: UInt64 = 10) -> [NostrEvent] {
+        guard let client = self.client else {
+            self.lastError = "Client not initialized"
+            return []
+        }
+        
+        do {
+            let events = try client.fetchEvents(filter: filter, timeoutSeconds: timeoutSeconds)
+            self.lastError = nil
+            return events
+        } catch {
+            self.lastError = "Failed to fetch events: \(error.localizedDescription)"
+            return []
         }
     }
     
@@ -420,5 +466,74 @@ extension NostrUtils {
         
         print("✅ Setup and connection successful")
         return true
+    }
+    
+    /**
+     * Quick post: setup, connect and publish an event
+     * @param kind Event kind
+     * @param content Event content to publish
+     * @param tags Optional tags
+     * @return Returns event ID on success, nil on failure
+     */
+    public func quickPublish(kind: UInt16, content: String, tags: [[String]]? = nil) -> String? {
+        guard quickSetupAndConnect() else {
+            return nil
+        }
+        
+        return publishEvent(kind: kind, content: content, tags: tags)
+    }
+    
+    /**
+     * Create a simple event filter
+     * @param kinds Array of event kinds (optional)
+     * @param authors Array of author public keys (optional)
+     * @param limit Maximum number of events to fetch
+     * @param since Unix timestamp to fetch events since (optional)
+     * @return NostrFilter configured with specified criteria
+     */
+    public static func createFilter(kinds: [UInt16]? = nil, authors: [String]? = nil, limit: UInt64 = 20, since: UInt64? = nil) -> NostrFilter {
+        return NostrFilter(
+            ids: nil,
+            authors: authors,
+            kinds: kinds,
+            since: since,
+            until: nil,
+            limit: limit,
+            search: nil
+        )
+    }
+    
+    /**
+     * Create a filter for a specific event
+     * @param eventId The event ID to fetch
+     * @return NostrFilter configured for the specific event
+     */
+    public static func createEventFilter(eventId: String) -> NostrFilter {
+        return NostrFilter(
+            ids: [eventId],
+            authors: nil,
+            kinds: nil,
+            since: nil,
+            until: nil,
+            limit: 1,
+            search: nil
+        )
+    }
+    
+    /**
+     * Create a filter for user's profile events
+     * @param pubkey User's public key
+     * @return NostrFilter configured for metadata events
+     */
+    public static func createProfileFilter(pubkey: String) -> NostrFilter {
+        return NostrFilter(
+            ids: nil,
+            authors: [pubkey],
+            kinds: [0], // Metadata events
+            since: nil,
+            until: nil,
+            limit: 1,
+            search: nil
+        )
     }
 } 
