@@ -301,6 +301,11 @@ RustBuffer uniffi_nopu_rust_ffi_fn_method_nostrclient_get_public_key(void*_Nonnu
 RustBuffer uniffi_nopu_rust_ffi_fn_method_nostrclient_get_relay_status(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_FN_METHOD_NOSTRCLIENT_PUBLISH_EVENT
+#define UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_FN_METHOD_NOSTRCLIENT_PUBLISH_EVENT
+RustBuffer uniffi_nopu_rust_ffi_fn_method_nostrclient_publish_event(void*_Nonnull ptr, uint16_t kind, RustBuffer content, RustBuffer tags, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_FN_METHOD_NOSTRCLIENT_PUBLISH_TEXT_NOTE
 #define UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_FN_METHOD_NOSTRCLIENT_PUBLISH_TEXT_NOTE
 RustBuffer uniffi_nopu_rust_ffi_fn_method_nostrclient_publish_text_note(void*_Nonnull ptr, RustBuffer content, RustBuffer tags, RustCallStatus *_Nonnull out_status
@@ -684,6 +689,12 @@ uint16_t uniffi_nopu_rust_ffi_checksum_method_nostrclient_get_public_key(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_CHECKSUM_METHOD_NOSTRCLIENT_GET_RELAY_STATUS
 #define UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_CHECKSUM_METHOD_NOSTRCLIENT_GET_RELAY_STATUS
 uint16_t uniffi_nopu_rust_ffi_checksum_method_nostrclient_get_relay_status(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_CHECKSUM_METHOD_NOSTRCLIENT_PUBLISH_EVENT
+#define UNIFFI_FFIDEF_UNIFFI_NOPU_RUST_FFI_CHECKSUM_METHOD_NOSTRCLIENT_PUBLISH_EVENT
+uint16_t uniffi_nopu_rust_ffi_checksum_method_nostrclient_publish_event(void
     
 );
 #endif

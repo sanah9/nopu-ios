@@ -38,14 +38,9 @@ public class NostrUtils: ObservableObject {
      * @return Returns true on success, false on failure
      */
     public func generateNewKeys() -> Bool {
-        do {
-            self.keys = generateKeys()
-            self.lastError = nil
-            return true
-        } catch {
-            self.lastError = "Failed to generate keys: \(error.localizedDescription)"
-            return false
-        }
+        self.keys = generateKeys()
+        self.lastError = nil
+        return true
     }
     
     /**
