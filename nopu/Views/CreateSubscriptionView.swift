@@ -10,6 +10,7 @@ import SwiftUI
 struct CreateSubscriptionView: View {
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var viewModel = SubscriptionViewModel()
+    @ObservedObject var subscriptionManager: SubscriptionManager
     
     // UI input states
     @State private var newEventId = ""
@@ -269,9 +270,17 @@ struct CreateSubscriptionView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Subscribe") {
-                        // Add subscription logic
+                        // Create and save subscription
+                        let subscription = Subscription(
+                            topicName: viewModel.topicName,
+                            serverURL: viewModel.useAnotherServer ? viewModel.serverURL : nil
+                        )
+                        subscriptionManager.addSubscription(subscription)
+                        
+                        // Build subscription config for API call (for future implementation)
                         let config = viewModel.buildSubscriptionConfig()
                         print("Subscription config:", config)
+                        
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(.secondary)

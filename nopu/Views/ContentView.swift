@@ -10,10 +10,14 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showingAddSubscription = false
+    @StateObject private var subscriptionManager = SubscriptionManager()
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NotificationView(showingAddSubscription: $showingAddSubscription)
+            NotificationView(
+                showingAddSubscription: $showingAddSubscription,
+                subscriptionManager: subscriptionManager
+            )
                 .tabItem {
                     Image(systemName: "bell")
                     Text("Notifications")
@@ -28,7 +32,7 @@ struct ContentView: View {
                 .tag(1)
         }
         .sheet(isPresented: $showingAddSubscription) {
-            CreateSubscriptionView()
+            CreateSubscriptionView(subscriptionManager: subscriptionManager)
         }
     }
 }
