@@ -51,14 +51,9 @@ cargo build --release --target aarch64-apple-darwin
 echo -e "${YELLOW}Generating Swift bindings...${NC}"
 mkdir -p "${BINDINGS_DIR}"
 
-# Use uniffi to generate bindings
-echo "Attempting to generate Swift bindings..."
-if command -v uniffi-bindgen &> /dev/null; then
-    uniffi-bindgen generate src/nopu_ffi.udl --language swift --out-dir "${BINDINGS_DIR}"
-else
-    echo "uniffi-bindgen not found, please install first: cargo install uniffi-cli"
-    exit 1
-fi
+# Use our built-in uniffi-bindgen binary to generate bindings
+echo "Generating Swift bindings with built-in tool..."
+cargo run --bin uniffi-bindgen -- generate --library target/debug/libnopu_rust_ffi.dylib --language swift --out-dir "${BINDINGS_DIR}"
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to generate Swift bindings${NC}"
@@ -71,8 +66,8 @@ HEADER_DIR="${BINDINGS_DIR}/include"
 mkdir -p "${HEADER_DIR}"
 
 # Copy and rename files
-cp "${BINDINGS_DIR}/${RUST_LIB_NAME}FFI.h" "${HEADER_DIR}/"
-cp "${BINDINGS_DIR}/${RUST_LIB_NAME}FFI.modulemap" "${HEADER_DIR}/module.modulemap"
+cp "${BINDINGS_DIR}/nopu_ffiFFI.h" "${HEADER_DIR}/"
+cp "${BINDINGS_DIR}/nopu_ffiFFI.modulemap" "${HEADER_DIR}/module.modulemap"
 
 # Create XCFramework
 echo -e "${YELLOW}Creating XCFramework...${NC}"
@@ -95,18 +90,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Copy Swift binding files
-echo -e "${YELLOW}Copying Swift binding files...${NC}"
-cp "${BINDINGS_DIR}/${RUST_LIB_NAME}.swift" "${OUTPUT_DIR}/Utils/NostrFFI.swift"
+# Keep Swift binding files in the Rust project directory
+echo -e "${YELLOW}Organizing Swift binding files...${NC}"
+cp "${BINDINGS_DIR}/nopu_ffi.swift" "./NostrFFI.swift"
+cp "${BINDINGS_DIR}/nopu_ffiFFI.h" "./include/"
+cp "${BINDINGS_DIR}/nopu_ffiFFI.modulemap" "./include/"
 
 echo -e "${GREEN}✅ Build completed!${NC}"
 echo -e "${GREEN}📦 XCFramework: ${XCFRAMEWORK_PATH}${NC}"
-echo -e "${GREEN}📄 Swift bindings: ${OUTPUT_DIR}/Utils/NostrFFI.swift${NC}"
+echo -e "${GREEN}📄 Swift bindings: ./NostrFFI.swift${NC}"
+echo -e "${GREEN}📄 C header: ./include/nopu_ffiFFI.h${NC}"
+echo -e "${GREEN}📄 Module map: ./include/nopu_ffiFFI.modulemap${NC}"
 
-echo -e "${BLUE}Now you can:${NC}"
+echo -e "${BLUE}To use in your iOS project:${NC}"
 echo -e "1. Drag ${FRAMEWORK_NAME}.xcframework into your Xcode project"
-echo -e "2. Import NostrFFI module in your Swift code"
-echo -e "3. Use createNostrClient() to create client instances"
+echo -e "2. Copy NostrFFI.swift to your Swift project"
+echo -e "3. Import the framework and use the generated Swift APIs"
 
 # Clean up temporary files
 echo -e "${YELLOW}Cleaning up temporary files...${NC}"

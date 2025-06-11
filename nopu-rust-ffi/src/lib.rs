@@ -547,7 +547,7 @@ pub extern "C" fn nostr_event_free(event: *mut Event) {
 // Client management
 #[no_mangle]
 pub extern "C" fn nostr_client_new() -> *mut Client {
-    let client = Client::new(&Keys::generate());
+    let client = Client::new(Keys::generate());
     Box::into_raw(Box::new(client))
 }
 
