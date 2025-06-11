@@ -11,11 +11,11 @@ import SwiftUI
 struct nopuApp: App {
     
     init() {
-        // Automatically call quickSetup when app launches
-        if NostrUtils.shared.quickSetup() {
-            print("✅ Nostr quick setup successful")
+        // Automatically call quickSetup and connect when app launches
+        if NostrUtils.shared.quickSetupAndConnect() {
+            print("✅ Nostr quick setup and connection successful")
         } else {
-            print("❌ Nostr quick setup failed: \(NostrUtils.shared.lastError ?? "Unknown error")")
+            print("❌ Nostr quick setup and connection failed: \(NostrUtils.shared.lastError ?? "Unknown error")")
         }
     }
     

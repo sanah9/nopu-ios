@@ -64,6 +64,7 @@ pub struct NostrFilter {
     pub until: Option<u64>,
     pub limit: Option<u64>,
     pub search: Option<String>,
+    pub tags: Option<Vec<Vec<String>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -292,6 +293,56 @@ impl NostrClient {
                 nostr_filter = nostr_filter.limit(limit as usize);
             }
             
+            // Handle custom tags - currently implementing h tag support
+            if let Some(tags) = filter.tags {
+                // Store tags for post-processing since nostr-sdk has limited tag filter support
+                println!("Custom tag filtering requested: {:?}", tags);
+                
+                for tag in tags {
+                    if tag.len() >= 2 {
+                        let tag_key = &tag[0];
+                        let tag_values: Vec<String> = tag[1..].to_vec();
+                        
+                        // Handle specific well-supported tags only
+                        match tag_key.as_str() {
+                            "e" => {
+                                // For e tag (event references)
+                                let event_ids: Result<Vec<EventId>, _> = tag_values.iter()
+                                    .map(|id| EventId::from_hex(id)).collect();
+                                if let Ok(ids) = event_ids {
+                                    nostr_filter = nostr_filter.events(ids);
+                                }
+                            },
+                            "p" => {
+                                // For p tag (pubkey references)  
+                                let pubkeys: Result<Vec<PublicKey>, _> = tag_values.iter()
+                                    .map(|pk| PublicKey::from_hex(pk)).collect();
+                                if let Ok(pks) = pubkeys {
+                                    nostr_filter = nostr_filter.pubkeys(pks);
+                                }
+                            },
+                            "t" => {
+                                // For t tag (hashtags)
+                                nostr_filter = nostr_filter.hashtags(tag_values);
+                            },
+                            "h" => {
+                                // For h tag, use custom_tag method
+                                for tag_value in tag_values {
+                                    nostr_filter = nostr_filter.custom_tag(
+                                        SingleLetterTag::lowercase(nostr::prelude::Alphabet::H), 
+                                        tag_value
+                                    );
+                                }
+                            },
+                            _ => {
+                                // For other custom tags, we'll filter client-side
+                                println!("Tag '{}' with values {:?} will be filtered client-side", tag_key, tag_values);
+                            }
+                        }
+                    }
+                }
+            }
+            
             let events = self.client.fetch_events(nostr_filter, timeout).await
                 .map_err(|e| NostrError::EventQueryFailed(e.to_string()))?;
             
@@ -334,6 +385,51 @@ impl NostrClient {
             if let Some(kinds) = filter.kinds {
                 let kinds: Vec<Kind> = kinds.into_iter().map(Kind::from).collect();
                 nostr_filter = nostr_filter.kinds(kinds);
+            }
+            
+            // Handle custom tags in subscribe
+            if let Some(tags) = filter.tags {
+                println!("Custom tag filtering in subscribe: {:?}", tags);
+                
+                for tag in tags {
+                    if tag.len() >= 2 {
+                        let tag_key = &tag[0];
+                        let tag_values: Vec<String> = tag[1..].to_vec();
+                        
+                        // Handle specific well-supported tags only
+                        match tag_key.as_str() {
+                            "e" => {
+                                let event_ids: Result<Vec<EventId>, _> = tag_values.iter()
+                                    .map(|id| EventId::from_hex(id)).collect();
+                                if let Ok(ids) = event_ids {
+                                    nostr_filter = nostr_filter.events(ids);
+                                }
+                            },
+                            "p" => {
+                                let pubkeys: Result<Vec<PublicKey>, _> = tag_values.iter()
+                                    .map(|pk| PublicKey::from_hex(pk)).collect();
+                                if let Ok(pks) = pubkeys {
+                                    nostr_filter = nostr_filter.pubkeys(pks);
+                                }
+                            },
+                            "t" => {
+                                nostr_filter = nostr_filter.hashtags(tag_values);
+                            },
+                            "h" => {
+                                // For h tag, use custom_tag method
+                                for tag_value in tag_values {
+                                    nostr_filter = nostr_filter.custom_tag(
+                                        SingleLetterTag::lowercase(nostr::prelude::Alphabet::H), 
+                                        tag_value
+                                    );
+                                }
+                            },
+                            _ => {
+                                println!("Tag '{}' with values {:?} will be filtered client-side in subscription", tag_key, tag_values);
+                            }
+                        }
+                    }
+                }
             }
             
             let auto_close_opts = auto_close_after.map(|seconds| {

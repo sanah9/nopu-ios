@@ -10,6 +10,7 @@ import Foundation
 struct Subscription: Identifiable, Codable {
     let id = UUID()
     var topicName: String
+    var groupId: String? // NIP-29 group ID
     var createdAt: Date
     var lastNotificationAt: Date?
     var unreadCount: Int
@@ -20,7 +21,7 @@ struct Subscription: Identifiable, Codable {
     
     // CodingKeys to exclude 'id' from encoding/decoding since it has a default value
     private enum CodingKeys: String, CodingKey {
-        case topicName, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
+        case topicName, groupId, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
     }
     
     // Nostr filter information for display
@@ -51,8 +52,9 @@ struct Subscription: Identifiable, Codable {
         return parts.joined(separator: ", ")
     }
     
-    init(topicName: String, serverURL: String? = nil) {
+    init(topicName: String, serverURL: String? = nil, groupId: String? = nil) {
         self.topicName = topicName
+        self.groupId = groupId
         self.createdAt = Date()
         self.lastNotificationAt = nil
         self.unreadCount = 0

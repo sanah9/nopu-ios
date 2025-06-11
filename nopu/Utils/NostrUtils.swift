@@ -605,7 +605,7 @@ extension NostrUtils {
      * @param since Unix timestamp to fetch events since (optional)
      * @return NostrFilter configured with specified criteria
      */
-    public static func createFilter(kinds: [UInt16]? = nil, authors: [String]? = nil, limit: UInt64 = 20, since: UInt64? = nil) -> NostrFilter {
+    public static func createFilter(kinds: [UInt16]? = nil, authors: [String]? = nil, limit: UInt64 = 20, since: UInt64? = nil, tags: [[String]]? = nil) -> NostrFilter {
         return NostrFilter(
             ids: nil,
             authors: authors,
@@ -613,7 +613,8 @@ extension NostrUtils {
             since: since,
             until: nil,
             limit: limit,
-            search: nil
+            search: nil,
+            tags: tags
         )
     }
     
@@ -630,7 +631,8 @@ extension NostrUtils {
             since: nil,
             until: nil,
             limit: 1,
-            search: nil
+            search: nil,
+            tags: [[String]]?(nil)
         )
     }
     
@@ -647,7 +649,8 @@ extension NostrUtils {
             since: nil,
             until: nil,
             limit: 1,
-            search: nil
+            search: nil,
+            tags: [[String]]?(nil)
         )
     }
 } 

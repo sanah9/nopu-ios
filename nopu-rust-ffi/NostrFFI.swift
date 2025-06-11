@@ -871,10 +871,11 @@ public struct NostrFilter {
     public var until: UInt64?
     public var limit: UInt64?
     public var search: String?
+    public var tags: [[String]]?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(ids: [String]?, authors: [String]?, kinds: [UInt16]?, since: UInt64?, until: UInt64?, limit: UInt64?, search: String?) {
+    public init(ids: [String]?, authors: [String]?, kinds: [UInt16]?, since: UInt64?, until: UInt64?, limit: UInt64?, search: String?, tags: [[String]]?) {
         self.ids = ids
         self.authors = authors
         self.kinds = kinds
@@ -882,6 +883,7 @@ public struct NostrFilter {
         self.until = until
         self.limit = limit
         self.search = search
+        self.tags = tags
     }
 }
 
@@ -913,6 +915,9 @@ extension NostrFilter: Equatable, Hashable {
         if lhs.search != rhs.search {
             return false
         }
+        if lhs.tags != rhs.tags {
+            return false
+        }
         return true
     }
 
@@ -924,6 +929,7 @@ extension NostrFilter: Equatable, Hashable {
         hasher.combine(until)
         hasher.combine(limit)
         hasher.combine(search)
+        hasher.combine(tags)
     }
 }
 
@@ -942,7 +948,8 @@ public struct FfiConverterTypeNostrFilter: FfiConverterRustBuffer {
                 since: FfiConverterOptionUInt64.read(from: &buf), 
                 until: FfiConverterOptionUInt64.read(from: &buf), 
                 limit: FfiConverterOptionUInt64.read(from: &buf), 
-                search: FfiConverterOptionString.read(from: &buf)
+                search: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterOptionSequenceSequenceString.read(from: &buf)
         )
     }
 
@@ -954,6 +961,7 @@ public struct FfiConverterTypeNostrFilter: FfiConverterRustBuffer {
         FfiConverterOptionUInt64.write(value.until, into: &buf)
         FfiConverterOptionUInt64.write(value.limit, into: &buf)
         FfiConverterOptionString.write(value.search, into: &buf)
+        FfiConverterOptionSequenceSequenceString.write(value.tags, into: &buf)
     }
 }
 
