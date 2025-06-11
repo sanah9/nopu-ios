@@ -20,6 +20,9 @@ public class NostrUtils: ObservableObject {
     private var keys: NostrKeys?
     private var subscriptions: [String: SubscriptionResult] = [:]
     
+    // UserDefaults key for private key storage
+    private static let privateKeyUserDefaultsKey = "NostrPrivateKey"
+    
     // Popular relay list
     public static let popularRelays = [
         "wss://relay.damus.io",
@@ -30,6 +33,75 @@ public class NostrUtils: ObservableObject {
     ]
     
     private init() {}
+    
+    // MARK: - Key Persistence
+    
+    /**
+     * Save private key to UserDefaults
+     * @param privateKey Private key to save
+     * @return Returns true on success, false on failure
+     */
+    private func savePrivateKeyToUserDefaults(_ privateKey: String) -> Bool {
+        UserDefaults.standard.set(privateKey, forKey: Self.privateKeyUserDefaultsKey)
+        self.lastError = nil
+        return true
+    }
+    
+    /**
+     * Load private key from UserDefaults
+     * @return Private key string, returns nil if not found
+     */
+    private func loadPrivateKeyFromUserDefaults() -> String? {
+        return UserDefaults.standard.string(forKey: Self.privateKeyUserDefaultsKey)
+    }
+    
+    /**
+     * Delete stored private key from UserDefaults
+     * @return Returns true on success, false on failure
+     */
+    public func deleteStoredPrivateKey() -> Bool {
+        UserDefaults.standard.removeObject(forKey: Self.privateKeyUserDefaultsKey)
+        return true
+    }
+    
+    /**
+     * Check if there is a stored private key
+     * @return Returns true if stored private key exists, false otherwise
+     */
+    public func hasStoredPrivateKey() -> Bool {
+        return loadPrivateKeyFromUserDefaults() != nil
+    }
+    
+    /**
+     * Auto-initialize keys: import existing key if available, otherwise generate new one and save
+     * @return Returns true on success, false on failure
+     */
+    public func autoInitializeKeys() -> Bool {
+        if let storedPrivateKey = loadPrivateKeyFromUserDefaults() {
+            // Found stored private key, import it
+            print("📱 Found stored private key, importing...")
+            return importKeys(privateKey: storedPrivateKey)
+        } else {
+            // No stored private key found, generate new one and save
+            print("🔑 No stored private key found, generating new keys...")
+            if generateNewKeys() {
+                if let privateKey = getPrivateKey() {
+                    if savePrivateKeyToUserDefaults(privateKey) {
+                        print("✅ New keys generated and saved successfully")
+                        return true
+                    } else {
+                        print("⚠️ Keys generated but failed to save")
+                        return true // Keys generated successfully, just saving failed
+                    }
+                } else {
+                    self.lastError = "Failed to get generated private key"
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+    }
     
     // MARK: - Key Management
     
@@ -57,6 +129,33 @@ public class NostrUtils: ObservableObject {
             self.lastError = "Failed to import keys: \(error.localizedDescription)"
             return false
         }
+    }
+    
+    /**
+     * Import keys and save to UserDefaults
+     * @param privateKey Private key (hex format)
+     * @return Returns true on success, false on failure
+     */
+    public func importAndSaveKeys(privateKey: String) -> Bool {
+        if importKeys(privateKey: privateKey) {
+            _ = savePrivateKeyToUserDefaults(privateKey)
+            return true
+        }
+        return false
+    }
+    
+    /**
+     * Generate new keys and save to UserDefaults
+     * @return Returns true on success, false on failure
+     */
+    public func generateAndSaveNewKeys() -> Bool {
+        if generateNewKeys() {
+            if let privateKey = getPrivateKey() {
+                _ = savePrivateKeyToUserDefaults(privateKey)
+                return true
+            }
+        }
+        return false
     }
     
     /**
@@ -98,12 +197,12 @@ public class NostrUtils: ObservableObject {
     }
     
     /**
-     * Quick setup: generate keys + initialize client + add popular relays
+     * Quick setup: auto-initialize keys + initialize client + add popular relays
      * @return Returns true on success, false on failure
      */
     public func quickSetup() -> Bool {
-        // 1. Generate keys
-        guard generateNewKeys() else { return false }
+        // 1. Auto-initialize keys (load existing or generate new)
+        guard autoInitializeKeys() else { return false }
         
         // 2. Initialize client
         guard initializeClient() else { return false }
@@ -461,6 +560,26 @@ extension NostrUtils {
         
         print("✅ Setup and connection successful")
         return true
+    }
+    
+    /**
+     * Reset all keys and data (for testing or starting fresh)
+     * @return Returns true on success, false on failure
+     */
+    public func resetAllData() -> Bool {
+        // 1. Clean up current session
+        cleanup()
+        
+        // 2. Delete stored private key
+        let deleteSuccess = deleteStoredPrivateKey()
+        
+        if deleteSuccess {
+            print("✅ All data reset successfully")
+            return true
+        } else {
+            print("⚠️ Failed to delete stored private key")
+            return false
+        }
     }
     
     /**
