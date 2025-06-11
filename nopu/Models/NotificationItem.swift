@@ -13,10 +13,16 @@ struct NotificationItem: Identifiable, Codable {
     var receivedAt: Date
     var isRead: Bool
     var type: NotificationType
+    var eventJSON: String?
+    var relayURL: String?
+    var authorPubkey: String?
+    var eventId: String?
+    var eventKind: Int?
+    var eventCreatedAt: Date?
     
     // CodingKeys to exclude 'id' from encoding/decoding since it has a default value
     private enum CodingKeys: String, CodingKey {
-        case message, receivedAt, isRead, type
+        case message, receivedAt, isRead, type, eventJSON, relayURL, authorPubkey, eventId, eventKind, eventCreatedAt
     }
     
     init(message: String, type: NotificationType = .general) {

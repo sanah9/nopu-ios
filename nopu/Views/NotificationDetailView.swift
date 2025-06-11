@@ -10,6 +10,8 @@ import SwiftUI
 struct NotificationDetailView: View {
     let subscription: Subscription
     @ObservedObject var subscriptionManager: SubscriptionManager
+    @State private var selectedNotification: NotificationItem?
+    @State private var showingEventDetail = false
     
     var body: some View {
             VStack(spacing: 0) {
@@ -40,7 +42,13 @@ struct NotificationDetailView: View {
                     // Notification list
                     List {
                         ForEach(subscription.notifications) { notification in
-                            NotificationItemRow(notification: notification)
+                            NotificationItemRow(
+                                notification: notification,
+                                onTap: {
+                                    selectedNotification = notification
+                                    showingEventDetail = true
+                                }
+                            )
                         }
                     }
                     .listStyle(PlainListStyle())
@@ -63,14 +71,21 @@ struct NotificationDetailView: View {
                 // Mark as read when the page appears
                 subscriptionManager.markAsRead(id: subscription.id)
             }
+            .sheet(isPresented: $showingEventDetail) {
+                if let notification = selectedNotification {
+                    NotificationEventDetailView(notification: notification)
+                }
+            }
     }
 }
 
 struct NotificationItemRow: View {
     let notification: NotificationItem
+    let onTap: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
             // Notification type icon
             ZStack {
                 Circle()
@@ -109,10 +124,12 @@ struct NotificationItemRow: View {
                     .fill(Color.red)
                     .frame(width: 8, height: 8)
             }
+            }
+            .padding(.vertical, 8)
+            .background(notification.isRead ? Color.clear : Color.blue.opacity(0.03))
+            .cornerRadius(8)
         }
-        .padding(.vertical, 8)
-        .background(notification.isRead ? Color.clear : Color.blue.opacity(0.03))
-        .cornerRadius(8)
+        .buttonStyle(PlainButtonStyle())
     }
     
     private var iconColor: Color {
