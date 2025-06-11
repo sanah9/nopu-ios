@@ -111,4 +111,8 @@ echo -e "3. Import the framework and use the generated Swift APIs"
 echo -e "${YELLOW}Cleaning up temporary files...${NC}"
 rm -rf "${BINDINGS_DIR}"
 
+# Copy NostrFFI.swift to utils directory
+echo -e "${YELLOW}Copying NostrFFI.swift to utils directory...${NC}"
+cp "./NostrFFI.swift" "../nopu/Utils/"
+
 echo -e "${GREEN}🎉 All done!${NC}" 
