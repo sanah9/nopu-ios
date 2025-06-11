@@ -265,7 +265,6 @@ struct CreateSubscriptionView: View {
                     Button("Cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .foregroundColor(.green)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -283,7 +282,6 @@ struct CreateSubscriptionView: View {
                         
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .foregroundColor(.secondary)
                     .disabled(viewModel.topicName.isEmpty || (viewModel.hasBasicOptionsSelected() && viewModel.userPubkey.isEmpty))
                 }
             }

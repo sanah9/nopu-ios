@@ -32,6 +32,7 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 12))
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -52,6 +53,7 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 12))
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                     
