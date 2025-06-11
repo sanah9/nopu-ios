@@ -1,0 +1,87 @@
+namespace nopu_ffi {
+    NostrKeys generate_keys();
+    [Throws=NostrError] NostrKeys keys_from_secret_key(string secret_key_hex);
+    [Throws=NostrError] string pubkey_from_secret_key(string secret_key_hex);
+};
+
+[Error]
+enum NostrError {
+    "InvalidHex",
+    "InvalidPublicKey", 
+    "InvalidPrivateKey",
+    "RelayConnectionFailed",
+    "EventCreationFailed",
+    "EventPublishingFailed",
+    "EventQueryFailed",
+    "SubscriptionFailed",
+    "Generic",
+};
+
+dictionary NostrKeys {
+    string public_key;
+    string private_key;
+};
+
+dictionary NostrEvent {
+    string id;
+    string pubkey;
+    u64 created_at;
+    u16 kind;
+    sequence<sequence<string>> tags;
+    string content;
+    string sig;
+};
+
+dictionary NostrFilter {
+    sequence<string>? ids;
+    sequence<string>? authors;
+    sequence<u16>? kinds;
+    u64? since;
+    u64? until;
+    u64? limit;
+    string? search;
+};
+
+dictionary NostrMetadata {
+    string? name;
+    string? about;
+    string? picture;
+    string? banner;
+    string? display_name;
+    string? nip05;
+    string? lud16;
+    string? website;
+};
+
+dictionary RelayInfo {
+    string url;
+    string status;
+    boolean connected;
+};
+
+dictionary SubscriptionResult {
+    string subscription_id;
+    sequence<NostrEvent> events;
+};
+
+interface NostrClient {
+    [Throws=NostrError] constructor(NostrKeys keys);
+    
+    [Throws=NostrError] string get_public_key();
+    [Throws=NostrError] void add_relay(string url);
+    [Throws=NostrError] void remove_relay(string url);
+    [Throws=NostrError] void connect();
+    [Throws=NostrError] void disconnect();
+    sequence<RelayInfo> get_relay_status();
+    
+    [Throws=NostrError] string publish_text_note(string content, sequence<sequence<string>>? tags);
+    [Throws=NostrError] string set_metadata(NostrMetadata metadata);
+    
+    [Throws=NostrError] sequence<NostrEvent> fetch_events(NostrFilter filter, u64? timeout_seconds);
+    [Throws=NostrError] NostrMetadata? get_metadata(string pubkey);
+    
+    [Throws=NostrError] SubscriptionResult subscribe(NostrFilter filter, u64? auto_close_after);
+    [Throws=NostrError] void unsubscribe(string subscription_id);
+    
+    [Throws=NostrError] string send_private_message(string receiver_pubkey, string message);
+}; 
