@@ -25,11 +25,7 @@ public class NostrUtils: ObservableObject {
     
     // Popular relay list
     public static let popularRelays = [
-        "wss://relay.damus.io",
-        "wss://nos.lol",
-        "wss://relay.snort.social",
-        "wss://nostr-pub.wellorder.net",
-        "wss://relay.nostr.band"
+        "ws://127.0.0.1:8080"
     ]
     
     private init() {}
