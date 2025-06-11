@@ -282,7 +282,7 @@ struct CreateSubscriptionView: View {
                         
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(viewModel.topicName.isEmpty || (viewModel.hasBasicOptionsSelected() && viewModel.userPubkey.isEmpty))
+                    .disabled(viewModel.topicName.isEmpty)
                 }
             }
         }
