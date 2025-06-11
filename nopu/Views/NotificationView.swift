@@ -41,20 +41,19 @@ struct NotificationView: View {
                     // Subscription list
                     List {
                         ForEach(subscriptionManager.subscriptions) { subscription in
-                            SubscriptionRow(
+                            NavigationLink(destination: NotificationDetailView(
                                 subscription: subscription,
-                                onTap: {
-                                    // Mark as read when tapped
-                                    subscriptionManager.markAsRead(id: subscription.id)
-                                }
-                            )
+                                subscriptionManager: subscriptionManager
+                            )) {
+                                SubscriptionRowContent(subscription: subscription)
+                            }
                         }
                         .onDelete(perform: deleteSubscriptions)
                     }
                     .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("Subscribed topics")
+            .navigationTitle("Subscribed Topics")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -91,27 +90,29 @@ struct NotificationView: View {
     private func simulateNewNotification() {
         guard let randomSubscription = subscriptionManager.subscriptions.randomElement() else { return }
         
-        let messages = [
-            "Received a new like notification",
-            "Someone reposted your content",
-            "Received a new reply",
-            "Received a new Zap",
-            "Received a new direct message",
-            "New content matches your subscription"
+        let notificationTypes: [(String, NotificationType)] = [
+            ("Alex liked your post", .like),
+            ("Betty reposted your content", .repost),
+            ("Charlie replied to you: \"Great point!\"", .reply),
+            ("Diana sent you 2000 sats", .zap),
+            ("Eve sent you a direct message", .directMessage),
+            ("New content matches your subscription", .general)
         ]
         
-        let randomMessage = messages.randomElement() ?? "New notification"
-        subscriptionManager.addNotificationToTopic(topicName: randomSubscription.topicName, message: randomMessage)
+        let randomNotification = notificationTypes.randomElement() ?? ("New notification", .general)
+        subscriptionManager.addNotificationToTopic(
+            topicName: randomSubscription.topicName, 
+            message: randomNotification.0,
+            type: randomNotification.1
+        )
     }
 }
 
-struct SubscriptionRow: View {
+struct SubscriptionRowContent: View {
     let subscription: Subscription
-    let onTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
+        HStack(spacing: 12) {
                 // Topic icon
                 ZStack {
                     Circle()
@@ -174,8 +175,6 @@ struct SubscriptionRow: View {
                 }
             }
             .padding(.vertical, 8)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
     
     private func formatRelativeTime(_ date: Date) -> String {

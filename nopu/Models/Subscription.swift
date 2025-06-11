@@ -16,10 +16,11 @@ struct Subscription: Identifiable, Codable {
     var latestMessage: String?
     var isActive: Bool
     var serverURL: String?
+    var notifications: [NotificationItem] = []
     
     // CodingKeys to exclude 'id' from encoding/decoding since it has a default value
     private enum CodingKeys: String, CodingKey {
-        case topicName, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL
+        case topicName, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
     }
     
     // Nostr filter information for display
@@ -60,13 +61,24 @@ struct Subscription: Identifiable, Codable {
         self.serverURL = serverURL
     }
     
-    mutating func addNotification(message: String) {
+    mutating func addNotification(message: String, type: NotificationType = .general) {
+        let newNotification = NotificationItem(message: message, type: type)
+        self.notifications.insert(newNotification, at: 0) // Insert at the beginning, newest first
         self.unreadCount += 1
         self.latestMessage = message
         self.lastNotificationAt = Date()
+        
+        // Limit notification history count to avoid excessive data
+        if self.notifications.count > 100 {
+            self.notifications = Array(self.notifications.prefix(100))
+        }
     }
     
     mutating func markAsRead() {
         self.unreadCount = 0
+        // Mark all notifications as read
+        for i in notifications.indices {
+            notifications[i].isRead = true
+        }
     }
 } 
