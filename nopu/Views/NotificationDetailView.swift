@@ -11,7 +11,6 @@ struct NotificationDetailView: View {
     let subscription: Subscription
     @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var selectedNotification: NotificationItem?
-    @State private var showingEventDetail = false
     
     var body: some View {
             VStack(spacing: 0) {
@@ -46,7 +45,6 @@ struct NotificationDetailView: View {
                                 notification: notification,
                                 onTap: {
                                     selectedNotification = notification
-                                    showingEventDetail = true
                                 }
                             )
                         }
@@ -71,10 +69,8 @@ struct NotificationDetailView: View {
                 // Mark as read when the page appears
                 subscriptionManager.markAsRead(id: subscription.id)
             }
-            .sheet(isPresented: $showingEventDetail) {
-                if let notification = selectedNotification {
-                    NotificationEventDetailView(notification: notification)
-                }
+            .sheet(item: $selectedNotification) { notification in
+                NotificationEventDetailView(notification: notification)
             }
     }
 }
@@ -86,48 +82,50 @@ struct NotificationItemRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-            // Notification type icon
-            ZStack {
-                Circle()
-                    .fill(iconBackgroundColor)
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: notification.type.iconName)
-                    .font(.system(size: 18))
-                    .foregroundColor(iconColor)
-            }
-            
-            // Notification content
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(notification.type.displayName)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                // Notification type icon
+                ZStack {
+                    Circle()
+                        .fill(iconBackgroundColor)
+                        .frame(width: 40, height: 40)
                     
-                    Spacer()
-                    
-                    Text(formatRelativeTime(notification.receivedAt))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                    Image(systemName: notification.type.iconName)
+                        .font(.system(size: 18))
+                        .foregroundColor(iconColor)
                 }
                 
-                Text(notification.message)
-                    .font(.system(size: 15))
-                    .foregroundColor(.primary)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            
-            // Unread indicator
-            if !notification.isRead {
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 8, height: 8)
-            }
+                // Notification content
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(notification.type.displayName)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Text(formatRelativeTime(notification.receivedAt))
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Text(notification.message)
+                        .font(.system(size: 15))
+                        .foregroundColor(.primary)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                // Unread indicator
+                if !notification.isRead {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                }
             }
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(notification.isRead ? Color.clear : Color.blue.opacity(0.03))
             .cornerRadius(8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }
