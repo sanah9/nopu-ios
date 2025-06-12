@@ -43,12 +43,20 @@ class SubscriptionManager: ObservableObject {
     
     private let databaseManager = DatabaseManager.shared
     private let multiRelayManager = MultiRelayPoolManager.shared
+    private let eventProcessor = EventProcessor.shared
     
     init() {
         loadSubscriptions()
         updateServerGroups()
         configureNostrManagerWithSubscriptionRelays()
         setupAutoConnections()
+        
+        // Set up 20284 event handler
+        multiRelayManager.setEvent20284Handler { [weak self] eventString in
+            DispatchQueue.main.async {
+                self?.handleEvent20284(eventString)
+            }
+        }
     }
     
     private func loadSubscriptions() {
@@ -313,5 +321,48 @@ class SubscriptionManager: ObservableObject {
     // Get all server connection statuses
     var allServerConnections: [String: ServerConnection] {
         return multiRelayManager.serverConnections
+    }
+    
+    // Handle 20284 event
+    func handleEvent20284(_ eventString: String) {
+        print("Starting to process 20284 event: \(eventString)")
+        
+        guard let (groupId, eventContent) = eventProcessor.processEvent20284(eventString) else {
+            print("Failed to process 20284 event")
+            return
+        }
+        print("Successfully parsed event - groupId: \(groupId), eventContent: \(eventContent)")
+        
+        // Find corresponding subscription
+        guard let subscription = subscriptions.first(where: { $0.groupId == groupId }) else {
+            print("Subscription not found - groupId: \(groupId)")
+            return
+        }
+        print("Found corresponding subscription - topicName: \(subscription.topicName)")
+        
+        // Create notification
+        let notification = NotificationItem(
+            message: "New group event",
+            type: .general,
+            eventJSON: eventContent,
+            authorPubkey: nil,
+            eventId: nil,
+            eventKind: 20284,
+            eventCreatedAt: Date()
+        )
+        print("Created new notification - message: \(notification.message), type: \(notification.type)")
+        
+        // Update subscription
+        var updatedSubscription = subscription
+        updatedSubscription.notifications.insert(notification, at: 0)
+        updatedSubscription.unreadCount += 1
+        updatedSubscription.lastNotificationAt = Date()
+        updatedSubscription.latestMessage = notification.message
+        
+        // Update database and UI on main thread
+        DispatchQueue.main.async {
+            self.databaseManager.updateSubscription(updatedSubscription)
+            self.loadSubscriptions() // Reload to update UI
+        }
     }
 } 

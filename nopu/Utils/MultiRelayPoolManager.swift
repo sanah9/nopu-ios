@@ -26,6 +26,7 @@ public class MultiRelayPoolManager: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private let reconnectInterval: TimeInterval = 5.0 // Reconnect interval 5 seconds
+    private var event20284Handler: ((String) -> Void)?
     
     // MARK: - Initialization
     private init() {
@@ -167,6 +168,23 @@ public class MultiRelayPoolManager: ObservableObject {
         totalConnectionCount = serverConnections.count
         connectedServersCount = serverConnections.values.filter { $0.isConnected }.count
     }
+    
+    func setEvent20284Handler(_ handler: @escaping (String) -> Void) {
+        event20284Handler = handler
+    }
+    
+    // Handle event
+    private func handleEvent(_ event: String) {
+        // Check if it's a 20284 event
+        if event.contains("\"kind\":20284") {
+            event20284Handler?(event)
+        }
+    }
+    
+    // Add event handler method
+    func onEventReceived(_ event: String) {
+        handleEvent(event)
+    }
 }
 
 // MARK: - Server Connection Class
@@ -226,6 +244,43 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     
     public func relay(_ relay: Relay, didReceive event: RelayEvent) {
         print("Received event - ID: \(event.event.id), Kind: \(event.event.kind), Author: \(event.event.pubkey)")
+        
+        // Print original tags data
+        print("Original tags data:")
+        for tag in event.event.tags {
+            print("Tag name: \(tag.name), value: \(tag.value), otherParams: \(tag.otherParameters)")
+        }
+        
+        // Convert tags to serializable format
+        let serializedTags = event.event.tags.map { tag -> [String] in
+            var tagArray = [tag.name, tag.value]
+            tagArray.append(contentsOf: tag.otherParameters)
+            return tagArray
+        }
+        
+        print("Serialized tags: \(serializedTags)")
+        
+        // Manually build event dictionary
+        let eventDict: [String: Any] = [
+            "id": event.event.id,
+            "pubkey": event.event.pubkey,
+            "created_at": Int(event.event.createdAt),
+            "kind": Int(event.event.kind.rawValue),
+            "tags": serializedTags,
+            "content": event.event.content
+        ]
+        
+        print("Event dictionary: \(eventDict)")
+        
+        // Convert event to string
+        if let eventString = try? JSONSerialization.data(withJSONObject: ["EVENT", event.subscriptionId, eventDict], options: []),
+           let eventString = String(data: eventString, encoding: .utf8) {
+            print("Serialized event string: \(eventString)")
+            // Notify MultiRelayPoolManager to handle event
+            MultiRelayPoolManager.shared.onEventReceived(eventString)
+        } else {
+            print("Event serialization failed")
+        }
     }
     
     // MARK: - Initialization
