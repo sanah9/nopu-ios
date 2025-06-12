@@ -23,11 +23,7 @@ public class NostrManager: ObservableObject {
     
     // MARK: - Constants
     private static let popularRelays = [
-        "wss://relay.damus.io",
-        "wss://nos.lol",
-        "wss://relay.snort.social",
-        "wss://relay.nostr.band",
-        "wss://nostr.wine"
+        "ws://127.0.0.1:8080"
     ]
     
     private static let privateKeyKey = "NostrManager.privateKey"
@@ -267,6 +263,8 @@ public class NostrManager: ObservableObject {
             // Create and sign the event
             let event = try NostrEvent(kind: eventKind, content: content, tags: eventTags, signedBy: keypair)
             
+            print("📤 Publishing event - ID: \(event.id), Kind: \(event.kind), Content: \(event.content), Tags: \(event.tags), CreatedAt: \(event.createdAt)")
+            
             // Send to relay pool
             relayPool.publishEvent(event)
             
@@ -297,25 +295,44 @@ public class NostrManager: ObservableObject {
         let filterUntil = filter.until.map { Int($0) }
         let filterLimit = filter.limit.map { Int($0) }
         
-        // Create Filter using the failable initializer with correct parameters
+        // Convert tags to proper format for Filter: [Character: [String]]
+        var filterTags: [Character: [String]]? = nil
+        if let tags = filter.tags, !tags.isEmpty {
+            var tagDict: [Character: [String]] = [:]
+            for tagArray in tags {
+                if tagArray.count >= 2 {
+                    if let tagChar = tagArray[0].first, tagArray[0].count == 1 {
+                        let tagValues = Array(tagArray.dropFirst())
+                        tagDict[tagChar] = tagValues
+                        print("🏷️ Added tag filter: '\(tagChar)' = \(tagValues)")
+                    }
+                }
+            }
+            filterTags = tagDict.isEmpty ? nil : tagDict
+        }
+        
+        // Create Filter with proper tags support
         guard let nostrFilter = Filter(
             ids: filter.ids,
             authors: filter.authors,
             kinds: filterKinds,
+            tags: filterTags,
             since: filterSince,
             until: filterUntil,
             limit: filterLimit
         ) else {
-            self.lastError = "Invalid filter parameters"
+            self.lastError = "Invalid filter parameters - Filter creation failed"
             return []
         }
         
-        // Subscribe to get events
-        let subscriptionId = relayPool.subscribe(with: nostrFilter)
+        // Log the original requested tags for debugging
+        if let tags = filter.tags, !tags.isEmpty {
+            print("🏷️ Original requested tags: \(tags)")
+        }
         
-        // In a real app, you would handle this asynchronously
-        // and collect events as they arrive
-        print("🔍 Subscription created: \(subscriptionId)")
+        // Subscribe to get events
+        print("🔍 NostrFilter: \(nostrFilter)")
+        let subscriptionId = relayPool.subscribe(with: nostrFilter)
         
         return []
     }

@@ -23,9 +23,9 @@ class SubscriptionViewModel: ObservableObject {
     @Published var useUntilDate = false
     
     // Unified filter structure
-    @Published var unifiedFilter = NostrFilter()
+    @Published var unifiedFilter = UINostrFilter()
     
-    struct NostrFilter {
+    struct UINostrFilter {
         var eventIds: [String] = []
         var authors: [String] = []
         var kinds: [Int] = []
@@ -201,76 +201,52 @@ class SubscriptionViewModel: ObservableObject {
     }
     
     private func buildBasicFilter() -> [String: Any] {
-        var filters: [[String: Any]] = []
+        var kinds: [Int] = []
+        var filter: [String: Any] = [
+            "since": Int(Date().timeIntervalSince1970)
+        ]
         
-        guard !userPubkey.isEmpty else {
-            return [:]
-        }
-        
-        // Like notifications (kind 7)
+        // Collect all selected notification kinds
         if notifyOnLikes {
-            filters.append([
-                "kinds": [7],
-                "#e": [userPubkey], // Assuming userPubkey is also used as event ID
-                "since": Int(Date().timeIntervalSince1970)
-            ])
+            kinds.append(7)  // Like notifications
         }
         
-        // Repost notifications (kind 6)
         if notifyOnReposts {
-            filters.append([
-                "kinds": [6],
-                "#e": [userPubkey],
-                "since": Int(Date().timeIntervalSince1970)
-            ])
+            kinds.append(6)  // Repost notifications
         }
         
-        // Reply notifications (kind 1, containing user mentions)
         if notifyOnReplies {
-            filters.append([
-                "kinds": [1],
-                "#p": [userPubkey],
-                "since": Int(Date().timeIntervalSince1970)
-            ])
+            kinds.append(1)  // Reply notifications
         }
         
-        // Zap notifications (kind 9735)
         if notifyOnZaps {
-            filters.append([
-                "kinds": [9735],
-                "#p": [userPubkey],
-                "since": Int(Date().timeIntervalSince1970)
-            ])
+            kinds.append(9735)  // Zap notifications
         }
         
-        // Following posts (kind 1) - This requires knowing who the user follows
         if notifyOnFollowsPosts {
-            // Note: Need to get user's following list, leaving empty for now
-            // In actual implementation, need to first get user's kind 3 event to get following list
-            filters.append([
-                "kinds": [1],
-                "since": Int(Date().timeIntervalSince1970)
-                // "authors": [] // Need to fill in followed users' pubkey list
-            ])
+            if !kinds.contains(1) {
+                kinds.append(1)  // Following posts (also kind 1)
+            }
         }
         
-        // Direct message notifications (kind 4)
         if notifyOnDMs {
-            filters.append([
-                "kinds": [4],
-                "#p": [userPubkey],
-                "since": Int(Date().timeIntervalSince1970)
-            ])
+            kinds.append(1059)  // Direct messages (NIP-44)
+            kinds.append(4)     // Direct messages (legacy)
         }
         
-        // If multiple filters exist, return array; if only one, return single object
-        if filters.count == 1 {
-            return filters[0]
-        } else if filters.count > 1 {
-            return ["filters": filters]
+        // Set the kinds array
+        if !kinds.isEmpty {
+            filter["kinds"] = kinds.sorted()
         } else {
-            return [:]
+            filter["kinds"] = [1]  // Fallback
         }
+        
+        // Add user pubkey filter if available
+        if !userPubkey.isEmpty {
+            filter["#p"] = [userPubkey]
+        }
+        
+        return filter
     }
     
     private func buildAdvancedFilter() -> [String: Any] {
@@ -318,6 +294,142 @@ class SubscriptionViewModel: ObservableObject {
         }
         
         return config
+    }
+    
+    // MARK: - NIP-29 Group Creation
+    
+    func createSubscriptionWithGroup(subscriptionManager: SubscriptionManager, completion: @escaping (Bool) -> Void) {
+        // Generate a unique group ID
+        let groupId = UUID().uuidString.lowercased()
+        
+        // Create NIP-29 group creation event (kind 9007)
+        createNIP29Group(groupId: groupId, groupName: topicName) { [weak self] success, eventId in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                if success {
+                    print("NIP-29 group created successfully, event ID: \(eventId ?? "unknown")")
+                    print("Group ID: \(groupId)")
+                    
+                    // Fetch events with kind 20284 and h tag = groupId
+                    self.fetchGroupEvents(groupId: groupId)
+                    
+                    // Create and save subscription with group ID
+                    let subscription = Subscription(
+                        topicName: self.topicName,
+                        serverURL: self.useAnotherServer ? self.serverURL : nil,
+                        groupId: groupId
+                    )
+                    subscriptionManager.addSubscription(subscription)
+                    
+                    // Build subscription config for API call (for future implementation)
+                    let config = self.buildSubscriptionConfig()
+                    print("Subscription config:", config)
+                    
+                    completion(true)
+                } else {
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    private func fetchGroupEvents(groupId: String) {
+        // Create filter for kind 20284 events with h tag filtering
+        let filter = NostrFilter(
+            ids: nil,
+            authors: nil,
+            kinds: [20284],
+            since: UInt64(Date().timeIntervalSince1970),
+            until: nil,
+            limit: nil,
+            search: nil,
+            tags: [["h", groupId]]
+        )
+        
+        // Fetch events with h tag filtering applied at Rust layer
+        let events = NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
+        
+        print("Fetched \(events.count) events with kind 20284 and h tag = \(groupId)")
+        
+        // Additional client-side verification (optional) - split into separate parts to help compiler
+        let verifiedEvents = events.filter { event in
+            let matchingTags = event.tags.filter { tag in
+                tag.name == "h" && tag.value == groupId
+            }
+            return !matchingTags.isEmpty
+        }
+        
+        print("Verified \(verifiedEvents.count) events matching group ID: \(groupId)")
+        
+        // Print event details for debugging
+        for event in verifiedEvents {
+            print("Event ID: \(event.id), Content: \(event.content)")
+            let tagDescriptions = event.tags.map { tag in
+                "[\(tag.name): \(tag.value)]"
+            }
+            print("Tags: \(tagDescriptions)")
+        }
+    }
+    
+    private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
+        // Create NIP-29 group using NostrUtils
+        guard NostrManager.shared.isConnected else {
+            print("Nostr client not connected")
+            completion(false, nil)
+            return
+        }
+        
+        // Debug: Print current filter states before building
+        print("🔧 Building filter - Basic options: likes=\(notifyOnLikes), reposts=\(notifyOnReposts), replies=\(notifyOnReplies), zaps=\(notifyOnZaps), follows=\(notifyOnFollowsPosts), dms=\(notifyOnDMs)")
+        print("🔧 User pubkey: '\(userPubkey)', hasBasicOptions: \(hasBasicOptionsSelected())")
+        
+        // Build NostrFilter JSON string for about field (just the filter, not REQ format)
+        let filterConfig = buildNostrFilter()
+        print("🔧 Built filter config: \(filterConfig)")
+        let aboutJsonString: String
+        
+        do {
+            // Build REQ format array: ["REQ", subscription_id, filter1, filter2, ...]
+            let subscriptionId = "sub_\(groupId)"
+            var reqArray: [Any] = ["REQ", subscriptionId]
+            
+            if let filters = filterConfig["filters"] as? [[String: Any]] {
+                // If already contains multiple filters, add them all
+                reqArray.append(contentsOf: filters)
+            } else if !filterConfig.isEmpty {
+                // If single filter object, add it
+                reqArray.append(filterConfig)
+            } else {
+                // Empty filter case - add a minimal filter
+                reqArray.append(["kinds": [1]] as [String: Any])
+            }
+            
+            // JSON encode the REQ array to string for about field
+            let jsonData = try JSONSerialization.data(withJSONObject: reqArray, options: [])
+            aboutJsonString = String(data: jsonData, encoding: .utf8) ?? "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
+            
+            print("About field REQ JSON string: \(aboutJsonString)")
+        } catch {
+            print("Failed to serialize REQ format to JSON: \(error)")
+            aboutJsonString = "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
+        }
+        
+        // NIP-29 group creation event tags
+        let tags: [[String]] = [
+            ["h", groupId],           // Group identifier
+            ["name", groupName],      // Group name
+            ["about", aboutJsonString], // NostrFilter as JSON string
+            ["private"],
+            ["closed"]
+        ]
+        
+        // Publish kind 9007 event (NIP-29 group creation)
+        if let eventId = NostrManager.shared.publishEvent(kind: 9007, content: "Create topic group: \(groupName)", tags: tags) {
+            completion(true, eventId)
+        } else {
+            completion(false, nil)
+        }
     }
 }
 

@@ -269,117 +269,18 @@ struct CreateSubscriptionView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Subscribe") {
-                        createSubscriptionWithGroup()
+                        viewModel.createSubscriptionWithGroup(subscriptionManager: subscriptionManager) { success in
+                            if success {
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                        }
                     }
                     .disabled(viewModel.topicName.isEmpty)
                 }
             }
         }
     }
-    
-    // MARK: - NIP-29 Group Creation
-    private func createSubscriptionWithGroup() {
-        // Generate a unique group ID
-        let groupId = UUID().uuidString.lowercased()
-        
-        // Create NIP-29 group creation event (kind 9007)
-        createNIP29Group(groupId: groupId, groupName: viewModel.topicName) { [self] success, eventId in
-            DispatchQueue.main.async {
-                if success {
-                    print("NIP-29 group created successfully, event ID: \(eventId ?? "unknown")")
-                    print("Group ID: \(groupId)")
-                    
-                    // Fetch events with kind 20284 and h tag = groupId
-                    fetchGroupEvents(groupId: groupId)
-                    
-                    // Create and save subscription with group ID
-                    let subscription = Subscription(
-                        topicName: viewModel.topicName,
-                        serverURL: viewModel.useAnotherServer ? viewModel.serverURL : nil,
-                        groupId: groupId
-                    )
-                    subscriptionManager.addSubscription(subscription)
-                    
-                    // Build subscription config for API call (for future implementation)
-                    let config = viewModel.buildSubscriptionConfig()
-                    print("Subscription config:", config)
-                    
-                    presentationMode.wrappedValue.dismiss()
-                } 
-            }
-        }
-    }
-    
-    private func fetchGroupEvents(groupId: String) {
-        // Create filter for kind 20284 events with h tag filtering
-        let filter = NostrFilter(
-            ids: nil,
-            authors: nil,
-            kinds: [20284],
-            since: UInt64(Date().timeIntervalSince1970),
-            until: nil,
-            limit: nil,
-            search: nil,
-            tags: [["h", groupId]]  // h tag filtering now supported in Rust layer
-        )
-        
-        // Fetch events with h tag filtering applied at Rust layer
-        let events = NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
-        
-        print("Fetched \(events.count) events with kind 20284 and h tag = \(groupId)")
-        
-        // Additional client-side verification (optional)
-        let verifiedEvents = events.filter { event in
-            return event.tags.contains { tag in
-                tag.name == "h" && tag.value == groupId
-            }
-        }
-        
-        print("Verified \(verifiedEvents.count) events matching group ID: \(groupId)")
-        
-        // Print event details for debugging
-        for event in verifiedEvents {
-            print("Event ID: \(event.id), Content: \(event.content)")
-            print("Tags: \(event.tags.map { "[\($0.name): \($0.value)]" })")
-        }
-    }
-    
-    private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
-        // Create NIP-29 group using NostrUtils
-        guard NostrManager.shared.isConnected else {
-            print("Nostr client not connected")
-            completion(false, nil)
-            return
-        }
-        
-        // Build NostrFilter JSON string for about field
-        let filterConfig = viewModel.buildNostrFilter()
-        let aboutJsonString: String
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: filterConfig, options: [])
-            aboutJsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
-        } catch {
-            print("Failed to serialize NostrFilter to JSON: \(error)")
-            aboutJsonString = "{}"
-        }
-        
-        // NIP-29 group creation event tags
-        let tags: [[String]] = [
-            ["h", groupId],           // Group identifier
-            ["name", groupName],      // Group name
-            ["about", aboutJsonString], // NostrFilter as JSON string
-            ["private"],
-            ["closed"]
-        ]
-        
-        // Publish kind 9007 event (NIP-29 group creation)
-        if let eventId = NostrManager.shared.publishEvent(kind: 9007, content: "Create topic group: \(groupName)", tags: tags) {
-            completion(true, eventId)
-        } else {
-            completion(false, nil)
-        }
-    }
+
 }
 
 // MARK: - UI Components
