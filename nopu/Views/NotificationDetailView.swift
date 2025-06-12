@@ -11,6 +11,7 @@ struct NotificationDetailView: View {
     let subscription: Subscription
     @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var selectedNotification: NotificationItem?
+    @State private var showingEditView = false
     
     var body: some View {
             VStack(spacing: 0) {
@@ -55,6 +56,13 @@ struct NotificationDetailView: View {
             .navigationTitle(subscription.topicName)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Edit") {
+                        showingEditView = true
+                    }
+                    .foregroundColor(.blue)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !subscription.notifications.isEmpty {
                         Button("Mark All Read") {
@@ -71,6 +79,12 @@ struct NotificationDetailView: View {
             }
             .sheet(item: $selectedNotification) { notification in
                 NotificationEventDetailView(notification: notification)
+            }
+            .sheet(isPresented: $showingEditView) {
+                EditSubscriptionView(
+                    subscription: subscription,
+                    subscriptionManager: subscriptionManager
+                )
             }
     }
 }

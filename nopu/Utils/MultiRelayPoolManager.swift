@@ -56,6 +56,11 @@ public class MultiRelayPoolManager: ObservableObject {
             relayURLs: actualRelayURLs
         )
         
+        // Set connection state change callback
+        connection.onConnectionStateChanged = { [weak self] in
+            self?.updateConnectionCounts()
+        }
+        
         // Listen to connection state changes
         connection.$isConnected
             .sink { [weak self] _ in
@@ -188,6 +193,9 @@ public class ServerConnection: ObservableObject {
     private var activeSubscriptions: [String: String] = [:] // subscriptionId -> filter
     private var pendingSubscriptions: [(String, [String: Any])] = [] // Pending subscriptions queue
     
+    // Connection state change callback
+    var onConnectionStateChanged: (() -> Void)?
+    
     // MARK: - Initialization
     init(serverURL: String, relayURLs: [String]) {
         self.serverURL = serverURL
@@ -288,7 +296,7 @@ public class ServerConnection: ObservableObject {
             let _ = executeSubscription(subscriptionId: subscriptionId, filter: filter)
         }
         
-                if !subscriptionsToProcess.isEmpty {
+        if !subscriptionsToProcess.isEmpty {
             print("Processed \(subscriptionsToProcess.count) pending subscriptions for \(serverURL)")
         }
     }
@@ -370,6 +378,11 @@ public class ServerConnection: ObservableObject {
         
         let previousState = self.connectionState
         self.connectionState = newConnectionState
+        
+        // Notify parent manager of connection state change
+        if wasConnected != self.isConnected {
+            onConnectionStateChanged?()
+        }
         
         // If just connected successfully, process pending subscriptions
         if !wasConnected && self.isConnected && previousState != .connected && newConnectionState == .connected {

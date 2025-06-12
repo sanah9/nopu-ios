@@ -10,6 +10,11 @@ import SwiftUI
 struct NotificationView: View {
     @Binding var showingAddSubscription: Bool
     @ObservedObject var subscriptionManager: SubscriptionManager
+    @ObservedObject private var multiRelayManager = MultiRelayPoolManager.shared
+    @State private var showingConnectionStatus = false
+    // Temporarily disabled edit functionality
+    // @State private var showingEditView = false
+    // @State private var subscriptionToEdit: Subscription?
     
     var body: some View {
         NavigationView {
@@ -47,6 +52,23 @@ struct NotificationView: View {
                             )) {
                                 SubscriptionRowContent(subscription: subscription)
                             }
+                            .contextMenu {
+                                // Temporarily disabled edit functionality
+                                /*
+                                Button {
+                                    subscriptionToEdit = subscription
+                                    showingEditView = true
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                */
+                                
+                                Button(role: .destructive) {
+                                    subscriptionManager.removeSubscription(id: subscription.id)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                         .onDelete(perform: deleteSubscriptions)
                     }
@@ -57,13 +79,16 @@ struct NotificationView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    // Debug button to simulate notifications
-                    if !subscriptionManager.subscriptions.isEmpty {
-                        Button("Simulate") {
-                            simulateNewNotification()
+                    Button(action: {
+                        showingConnectionStatus = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: connectionStatusIcon)
+                                .foregroundColor(connectionStatusColor)
+                            Text("\(multiRelayManager.connectedServersCount)/\(multiRelayManager.totalConnectionCount)")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(connectionStatusColor)
                         }
-                        .font(.system(size: 12))
-                        .foregroundColor(.blue)
                     }
                 }
                 
@@ -77,6 +102,20 @@ struct NotificationView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingConnectionStatus) {
+                ConnectionStatusView(subscriptionManager: subscriptionManager)
+            }
+            // Temporarily disabled edit functionality
+            /*
+            .sheet(isPresented: $showingEditView) {
+                if let subscription = subscriptionToEdit {
+                    EditSubscriptionView(
+                        subscription: subscription,
+                        subscriptionManager: subscriptionManager
+                    )
+                }
+            }
+            */
         }
     }
     
@@ -87,24 +126,34 @@ struct NotificationView: View {
         }
     }
     
-    private func simulateNewNotification() {
-        guard let randomSubscription = subscriptionManager.subscriptions.randomElement() else { return }
+    // MARK: - Computed Properties
+    
+    private var connectionStatusIcon: String {
+        let connected = multiRelayManager.connectedServersCount
+        let total = multiRelayManager.totalConnectionCount
         
-        let notificationTypes: [(String, NotificationType)] = [
-            ("Alex reacted to your post", .reaction),
-            ("Betty reposted your content", .repost),
-            ("Charlie mentioned you: \"Great point!\"", .mention),
-            ("Diana sent you 2000 sats", .zap),
-            ("Eve sent you a direct message", .dm),
-            ("New content matches your subscription", .general)
-        ]
+        if total == 0 {
+            return "wifi.slash"
+        } else if connected == 0 {
+            return "wifi.exclamationmark"
+        } else if connected == total {
+            return "wifi"
+        } else {
+            return "wifi.exclamationmark"
+        }
+    }
+    
+    private var connectionStatusColor: Color {
+        let connected = multiRelayManager.connectedServersCount
+        let total = multiRelayManager.totalConnectionCount
         
-        let randomNotification = notificationTypes.randomElement() ?? ("New notification", .general)
-        subscriptionManager.addNotificationToTopic(
-            topicName: randomSubscription.topicName, 
-            message: randomNotification.0,
-            type: randomNotification.1
-        )
+        if total == 0 || connected == 0 {
+            return .red
+        } else if connected == total {
+            return .green
+        } else {
+            return .orange
+        }
     }
 }
 

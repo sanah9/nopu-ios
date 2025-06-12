@@ -28,8 +28,7 @@ struct EditSubscriptionView: View {
     }
     
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 // Basic info (read-only)
                 Section("Subscription Info") {
                     HStack {
@@ -279,7 +278,6 @@ struct EditSubscriptionView: View {
             .onAppear {
                 loadSubscriptionData()
             }
-        }
     }
     
     // MARK: - Private Methods
