@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21754" systemVersion="22G313" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="NotificationEntity" representedClassName="NotificationEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="authorPubkey" optional="YES" attributeType="String"/>
+        <attribute name="eventCreatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="eventId" optional="YES" attributeType="String"/>
+        <attribute name="eventJSON" optional="YES" attributeType="String"/>
+        <attribute name="eventKind" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isRead" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="message" optional="YES" attributeType="String"/>
+        <attribute name="receivedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="relayURL" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <relationship name="subscription" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SubscriptionEntity" inverseName="notifications" inverseEntity="SubscriptionEntity"/>
+    </entity>
+    <entity name="SubscriptionEntity" representedClassName="SubscriptionEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="groupId" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isActive" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="lastNotificationAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="latestMessage" optional="YES" attributeType="String"/>
+        <attribute name="serverURL" optional="YES" attributeType="String"/>
+        <attribute name="topicName" optional="YES" attributeType="String"/>
+        <attribute name="unreadCount" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="notifications" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="NotificationEntity" inverseName="subscription" inverseEntity="NotificationEntity"/>
+    </entity>
+</model> 

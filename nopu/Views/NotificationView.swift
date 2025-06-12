@@ -91,11 +91,11 @@ struct NotificationView: View {
         guard let randomSubscription = subscriptionManager.subscriptions.randomElement() else { return }
         
         let notificationTypes: [(String, NotificationType)] = [
-            ("Alex liked your post", .like),
+            ("Alex reacted to your post", .reaction),
             ("Betty reposted your content", .repost),
-            ("Charlie replied to you: \"Great point!\"", .reply),
+            ("Charlie mentioned you: \"Great point!\"", .mention),
             ("Diana sent you 2000 sats", .zap),
-            ("Eve sent you a direct message", .directMessage),
+            ("Eve sent you a direct message", .dm),
             ("New content matches your subscription", .general)
         ]
         

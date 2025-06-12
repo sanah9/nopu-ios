@@ -132,35 +132,43 @@ struct NotificationItemRow: View {
     
     private var iconColor: Color {
         switch notification.type {
-        case .like:
-            return .red
-        case .repost:
-            return .green
-        case .reply:
-            return .blue
-        case .zap:
-            return .yellow
-        case .directMessage:
-            return .purple
         case .general:
             return .gray
+        case .repost:
+            return .green
+        case .mention:
+            return .pink
+        case .dm:
+            return .purple
+        case .reaction:
+            return .orange
+        case .zap:
+            return .yellow
+        case .follow:
+            return .teal
+        case .text:
+            return .brown
         }
     }
     
     private var iconBackgroundColor: Color {
         switch notification.type {
-        case .like:
-            return .red.opacity(0.15)
-        case .repost:
-            return .green.opacity(0.15)
-        case .reply:
-            return .blue.opacity(0.15)
-        case .zap:
-            return .yellow.opacity(0.15)
-        case .directMessage:
-            return .purple.opacity(0.15)
         case .general:
             return .gray.opacity(0.15)
+        case .repost:
+            return .green.opacity(0.15)
+        case .mention:
+            return .pink.opacity(0.15)
+        case .dm:
+            return .purple.opacity(0.15)
+        case .reaction:
+            return .orange.opacity(0.15)
+        case .zap:
+            return .yellow.opacity(0.15)
+        case .follow:
+            return .teal.opacity(0.15)
+        case .text:
+            return .brown.opacity(0.15)
         }
     }
     

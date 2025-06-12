@@ -314,8 +314,8 @@ class SubscriptionViewModel: ObservableObject {
                     // Create and save subscription with group ID
                     let subscription = Subscription(
                         topicName: self.topicName,
-                        serverURL: self.useAnotherServer ? self.serverURL : nil,
-                        groupId: groupId
+                        groupId: groupId,
+                        serverURL: self.useAnotherServer ? self.serverURL : ""
                     )
                     subscriptionManager.addSubscription(subscription)
                     

@@ -8,20 +8,70 @@
 import Foundation
 
 struct Subscription: Identifiable, Codable {
-    let id = UUID()
-    var topicName: String
-    var groupId: String? // NIP-29 group ID
-    var createdAt: Date
+    let id: UUID
+    let topicName: String
+    let groupId: String
+    let createdAt: Date
     var lastNotificationAt: Date?
     var unreadCount: Int
     var latestMessage: String?
     var isActive: Bool
-    var serverURL: String?
-    var notifications: [NotificationItem] = []
+    let serverURL: String
+    var notifications: [NotificationItem]
     
-    // CodingKeys to exclude 'id' from encoding/decoding since it has a default value
-    private enum CodingKeys: String, CodingKey {
-        case topicName, groupId, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
+    // Add CodingKeys to handle id field
+    enum CodingKeys: String, CodingKey {
+        case id, topicName, groupId, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
+    }
+    
+    // Custom init(from decoder:) to handle legacy data
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Try to decode id, generate new UUID if failed
+        if let decodedId = try? container.decode(UUID.self, forKey: .id) {
+            self.id = decodedId
+        } else {
+            self.id = UUID()
+        }
+        
+        self.topicName = try container.decode(String.self, forKey: .topicName)
+        self.groupId = try container.decode(String.self, forKey: .groupId)
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.lastNotificationAt = try container.decodeIfPresent(Date.self, forKey: .lastNotificationAt)
+        self.unreadCount = try container.decode(Int.self, forKey: .unreadCount)
+        self.latestMessage = try container.decodeIfPresent(String.self, forKey: .latestMessage)
+        self.isActive = try container.decode(Bool.self, forKey: .isActive)
+        self.serverURL = try container.decode(String.self, forKey: .serverURL)
+        self.notifications = try container.decode([NotificationItem].self, forKey: .notifications)
+    }
+    
+    // Initializer for database restoration
+    init(id: UUID, topicName: String, groupId: String, createdAt: Date, lastNotificationAt: Date? = nil, unreadCount: Int = 0, latestMessage: String? = nil, isActive: Bool = true, serverURL: String, notifications: [NotificationItem] = []) {
+        self.id = id
+        self.topicName = topicName
+        self.groupId = groupId
+        self.createdAt = createdAt
+        self.lastNotificationAt = lastNotificationAt
+        self.unreadCount = unreadCount
+        self.latestMessage = latestMessage
+        self.isActive = isActive
+        self.serverURL = serverURL
+        self.notifications = notifications
+    }
+    
+    // Convenience initializer (maintain backward compatibility)
+    init(topicName: String, groupId: String, serverURL: String) {
+        self.id = UUID()
+        self.topicName = topicName
+        self.groupId = groupId
+        self.createdAt = Date()
+        self.lastNotificationAt = nil
+        self.unreadCount = 0
+        self.latestMessage = nil
+        self.isActive = true
+        self.serverURL = serverURL
+        self.notifications = []
     }
     
     // Nostr filter information for display
@@ -50,17 +100,6 @@ struct Subscription: Identifiable, Codable {
         }
         
         return parts.joined(separator: ", ")
-    }
-    
-    init(topicName: String, serverURL: String? = nil, groupId: String? = nil) {
-        self.topicName = topicName
-        self.groupId = groupId
-        self.createdAt = Date()
-        self.lastNotificationAt = nil
-        self.unreadCount = 0
-        self.latestMessage = nil
-        self.isActive = true
-        self.serverURL = serverURL
     }
     
     mutating func addNotification(message: String, type: NotificationType = .general) {
