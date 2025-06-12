@@ -6,7 +6,7 @@ import NostrSDK
  * NostrManager - A convenient utility class for Nostr using nostr-sdk-ios
  * Replaces the previous Rust FFI implementation
  */
-public class NostrManager: ObservableObject {
+public class NostrManager: ObservableObject, RelayDelegate {
     
     // MARK: - Singleton
     public static let shared = NostrManager()
@@ -20,6 +20,8 @@ public class NostrManager: ObservableObject {
     private var relayPool: RelayPool?
     private var keypair: Keypair?
     private var cancellables = Set<AnyCancellable>()
+    private var eventSubjects: [String: PassthroughSubject<NostrEvent, Never>] = [:]
+    private var eventTimeouts: [String: Timer] = [:]
     
     // MARK: - Constants
     private static let privateKeyKey = "NostrManager.privateKey"
@@ -27,6 +29,51 @@ public class NostrManager: ObservableObject {
     // MARK: - Initialization
     private init() {
         // NostrManager initialized
+    }
+    
+    // MARK: - RelayDelegate
+    
+    public func relayStateDidChange(_ relay: Relay, state: Relay.State) {
+        print("Relay state changed - URL: \(relay.url), State: \(state)")
+        updateConnectionStatus(with: relayPool?.relays ?? [])
+    }
+    
+    public func relay(_ relay: Relay, didReceive response: RelayResponse) {
+        switch response {
+        case .event:
+            break // Events will be handled in didReceive event
+        case .eose(let subscriptionId):
+            if let subject = eventSubjects[subscriptionId] {
+                subject.send(completion: .finished)
+                cleanupSubscription(subscriptionId)
+            }
+        case .auth(let challenge):
+            print("Authentication required - challenge: \(challenge)")
+        case .ok(let eventId, let success, let message):
+            if !success {
+                print("Event publish failed - ID: \(eventId), Reason: \(message)")
+            }
+        case .closed(let subscriptionId, let message):
+            print("Subscription closed - ID: \(subscriptionId), Reason: \(message)")
+        case .notice(let message):
+            print("Relay notice: \(message)")
+        case .count(let subscriptionId, let count):
+            print("Subscription count - ID: \(subscriptionId), Count: \(count)")
+        }
+    }
+    
+    public func relay(_ relay: Relay, didReceive event: RelayEvent) {
+        // Handle unknown event types
+        if case .unknown(let kind) = event.event.kind {
+            if let contentData = event.event.content.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] {
+                print("Received unknown event - kind: \(kind), Content: \(json)")
+            }
+        }
+        
+        if let subject = eventSubjects[event.subscriptionId] {
+            subject.send(event.event)
+        }
     }
     
     // MARK: - Key Management
@@ -121,7 +168,7 @@ public class NostrManager: ObservableObject {
             return false
         }
         
-        self.relayPool = RelayPool(relays: [])
+        self.relayPool = RelayPool(relays: [], delegate: self)
         self.lastError = nil
         return true
     }
@@ -281,12 +328,15 @@ public class NostrManager: ObservableObject {
      * Fetch events with filter
      * @param filter Nostr filter
      * @param timeoutSeconds Timeout in seconds
-     * @return Array of events
+     * @return Publisher that emits NostrEvents
      */
-    public func fetchEvents(filter: NostrFilter, timeoutSeconds: UInt64) -> [NostrEvent] {
+    public func fetchEvents(filter: NostrFilter, timeoutSeconds: UInt64) -> AnyPublisher<NostrEvent, Never> {
+        let subject = PassthroughSubject<NostrEvent, Never>()
+        
         guard let relayPool = relayPool else {
             self.lastError = "Relay pool not initialized"
-            return []
+            subject.send(completion: .finished)
+            return subject.eraseToAnyPublisher()
         }
         
         // Build the filter - convert UInt16 kinds to Int
@@ -321,13 +371,33 @@ public class NostrManager: ObservableObject {
             limit: filterLimit
         ) else {
             self.lastError = "Invalid filter parameters - Filter creation failed"
-            return []
+            subject.send(completion: .finished)
+            return subject.eraseToAnyPublisher()
         }
         
         // Subscribe to get events
         let subscriptionId = relayPool.subscribe(with: nostrFilter)
+        eventSubjects[subscriptionId] = subject
         
-        return []
+        // Set up timeout
+        let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(timeoutSeconds), repeats: false) { [weak self] _ in
+            subject.send(completion: .finished)
+            self?.cleanupSubscription(subscriptionId)
+        }
+        
+        eventTimeouts[subscriptionId] = timer
+        
+        return subject.eraseToAnyPublisher()
+    }
+    
+    /**
+     * Clean up subscription resources
+     */
+    private func cleanupSubscription(_ subscriptionId: String) {
+        eventSubjects.removeValue(forKey: subscriptionId)
+        eventTimeouts[subscriptionId]?.invalidate()
+        eventTimeouts.removeValue(forKey: subscriptionId)
+        relayPool?.closeSubscription(with: subscriptionId)
     }
 }
 

@@ -174,7 +174,7 @@ public class MultiRelayPoolManager: ObservableObject {
 /**
  * ServerConnection - Single server connection management
  */
-public class ServerConnection: ObservableObject {
+public class ServerConnection: ObservableObject, RelayDelegate {
     
     // MARK: - Public Properties
     public let serverURL: String
@@ -195,6 +195,38 @@ public class ServerConnection: ObservableObject {
     
     // Connection state change callback
     var onConnectionStateChanged: (() -> Void)?
+    
+    // MARK: - RelayDelegate
+    
+    public func relayStateDidChange(_ relay: Relay, state: Relay.State) {
+        print("Relay state changed - URL: \(relay.url), State: \(state)")
+        updateConnectionStatus(with: relayPool?.relays ?? [])
+    }
+    
+    public func relay(_ relay: Relay, didReceive response: RelayResponse) {
+        switch response {
+        case .event:
+            break // Events will be handled in didReceive event
+        case .eose(let subscriptionId):
+            print("Subscription completed - ID: \(subscriptionId)")
+        case .auth(let challenge):
+            print("Authentication required - challenge: \(challenge)")
+        case .ok(let eventId, let success, let message):
+            if !success {
+                print("Event publish failed - ID: \(eventId), Reason: \(message)")
+            }
+        case .closed(let subscriptionId, let message):
+            print("Subscription closed - ID: \(subscriptionId), Reason: \(message)")
+        case .notice(let message):
+            print("Relay notice: \(message)")
+        case .count(let subscriptionId, let count):
+            print("Subscription count - ID: \(subscriptionId), Count: \(count)")
+        }
+    }
+    
+    public func relay(_ relay: Relay, didReceive event: RelayEvent) {
+        print("Received event - ID: \(event.event.id), Kind: \(event.event.kind), Author: \(event.event.pubkey)")
+    }
     
     // MARK: - Initialization
     init(serverURL: String, relayURLs: [String]) {
@@ -337,7 +369,7 @@ public class ServerConnection: ObservableObject {
             }
         }
         
-        relayPool = RelayPool(relays: Set(relays))
+        relayPool = RelayPool(relays: Set(relays), delegate: self)
         
         // Listen to connection state
         relayPool?.$relays

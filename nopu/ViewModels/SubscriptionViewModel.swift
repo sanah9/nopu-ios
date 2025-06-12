@@ -354,15 +354,13 @@ class SubscriptionViewModel: ObservableObject {
         )
         
         // Fetch events with h tag filtering applied at Rust layer
-        let events = NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
-        
-        // Additional client-side verification (optional) - split into separate parts to help compiler
-        let verifiedEvents = events.filter { event in
-            let matchingTags = event.tags.filter { tag in
-                tag.name == "h" && tag.value == groupId
+        NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
+            .sink { completion in
+                print("Event subscription completed: \(completion)")
+            } receiveValue: { event in
+                print("Received event - ID: \(event.id)")
             }
-            return !matchingTags.isEmpty
-        }
+            .store(in: &cancellables)
     }
     
     private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
