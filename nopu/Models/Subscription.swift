@@ -7,6 +7,22 @@
 
 import Foundation
 
+// Nostr filter configuration structure for storing filter settings
+struct NostrFilterConfig: Codable {
+    var eventIds: [String] = []
+    var authors: [String] = []
+    var kinds: [Int] = []
+    var tags: [String: [String]] = [:]  // Tag filters, key is tag name, value is array of tag values
+    var since: Date? = nil
+    var until: Date? = nil
+    var relays: [String] = []
+    
+    var isEmpty: Bool {
+        return eventIds.isEmpty && authors.isEmpty && kinds.isEmpty && 
+               tags.isEmpty && since == nil && until == nil
+    }
+}
+
 struct Subscription: Identifiable, Codable {
     let id: UUID
     let topicName: String
@@ -18,10 +34,11 @@ struct Subscription: Identifiable, Codable {
     var isActive: Bool
     let serverURL: String
     var notifications: [NotificationItem]
+    var filters: NostrFilterConfig // New filters field
     
     // Add CodingKeys to handle id field
     enum CodingKeys: String, CodingKey {
-        case id, topicName, groupId, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications
+        case id, topicName, groupId, createdAt, lastNotificationAt, unreadCount, latestMessage, isActive, serverURL, notifications, filters
     }
     
     // Custom init(from decoder:) to handle legacy data
@@ -44,10 +61,17 @@ struct Subscription: Identifiable, Codable {
         self.isActive = try container.decode(Bool.self, forKey: .isActive)
         self.serverURL = try container.decode(String.self, forKey: .serverURL)
         self.notifications = try container.decode([NotificationItem].self, forKey: .notifications)
+        
+        // Try to decode filters, use empty config if failed (for backward compatibility)
+        if let decodedFilters = try? container.decode(NostrFilterConfig.self, forKey: .filters) {
+            self.filters = decodedFilters
+        } else {
+            self.filters = NostrFilterConfig()
+        }
     }
     
     // Initializer for database restoration
-    init(id: UUID, topicName: String, groupId: String, createdAt: Date, lastNotificationAt: Date? = nil, unreadCount: Int = 0, latestMessage: String? = nil, isActive: Bool = true, serverURL: String, notifications: [NotificationItem] = []) {
+    init(id: UUID, topicName: String, groupId: String, createdAt: Date, lastNotificationAt: Date? = nil, unreadCount: Int = 0, latestMessage: String? = nil, isActive: Bool = true, serverURL: String, notifications: [NotificationItem] = [], filters: NostrFilterConfig = NostrFilterConfig()) {
         self.id = id
         self.topicName = topicName
         self.groupId = groupId
@@ -58,10 +82,11 @@ struct Subscription: Identifiable, Codable {
         self.isActive = isActive
         self.serverURL = serverURL
         self.notifications = notifications
+        self.filters = filters
     }
     
     // Convenience initializer (maintain backward compatibility)
-    init(topicName: String, groupId: String, serverURL: String) {
+    init(topicName: String, groupId: String, serverURL: String, filters: NostrFilterConfig = NostrFilterConfig()) {
         self.id = UUID()
         self.topicName = topicName
         self.groupId = groupId
@@ -72,11 +97,48 @@ struct Subscription: Identifiable, Codable {
         self.isActive = true
         self.serverURL = serverURL
         self.notifications = []
+        self.filters = filters
     }
     
     // Nostr filter information for display
     var filterSummary: String {
-        // This will be used to show what kind of notifications this subscription monitors
+        // If custom filters exist, show filter details
+        if !filters.isEmpty {
+            var parts: [String] = []
+            
+            if !filters.kinds.isEmpty {
+                let kindSummary = filters.kinds.map { kind in
+                    switch kind {
+                    case 1: return "Text Notes"
+                    case 6: return "Reposts"
+                    case 7: return "Likes"
+                    case 1059: return "Direct Messages"
+                    case 9735: return "Zaps"
+                    default: return "Kind \(kind)"
+                    }
+                }.joined(separator: ", ")
+                parts.append("Event Types: \(kindSummary)")
+            }
+            
+            if !filters.authors.isEmpty {
+                parts.append("Authors: \(filters.authors.count)")
+            }
+            
+            if !filters.tags.isEmpty {
+                let tagSummary = filters.tags.map { key, values in
+                    "\(key) tags: \(values.count)"
+                }.joined(separator: ", ")
+                parts.append(tagSummary)
+            }
+            
+            if !filters.relays.isEmpty {
+                parts.append("Relays: \(filters.relays.count)")
+            }
+            
+            return parts.isEmpty ? "Custom Filter" : parts.joined(separator: " | ")
+        }
+        
+        // Legacy logic based on topic name (for compatibility)
         var parts: [String] = []
         
         if topicName.lowercased().contains("like") {

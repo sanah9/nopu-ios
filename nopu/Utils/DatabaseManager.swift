@@ -65,6 +65,14 @@ class DatabaseManager: ObservableObject {
         entity.isActive = subscription.isActive
         entity.serverURL = subscription.serverURL
         
+        // Serialize filters to JSON string
+        if let filtersData = try? JSONEncoder().encode(subscription.filters),
+           let filtersString = String(data: filtersData, encoding: .utf8) {
+            entity.filtersData = filtersString
+        } else {
+            entity.filtersData = nil
+        }
+        
         // Add notifications
         for notification in subscription.notifications {
             let notificationEntity = NotificationEntity(context: context)
@@ -99,6 +107,14 @@ class DatabaseManager: ObservableObject {
                 entity.latestMessage = subscription.latestMessage
                 entity.isActive = subscription.isActive
                 entity.serverURL = subscription.serverURL
+                
+                // Update serialized filters
+                if let filtersData = try? JSONEncoder().encode(subscription.filters),
+                   let filtersString = String(data: filtersData, encoding: .utf8) {
+                    entity.filtersData = filtersString
+                } else {
+                    entity.filtersData = nil
+                }
                 
                 // Delete old notifications
                 if let notifications = entity.notifications {
@@ -230,6 +246,14 @@ class DatabaseManager: ObservableObject {
             }
         }
         
+        // Deserialize filters
+        var filters = NostrFilterConfig()
+        if let filtersString = entity.filtersData,
+           let filtersData = filtersString.data(using: .utf8),
+           let decodedFilters = try? JSONDecoder().decode(NostrFilterConfig.self, from: filtersData) {
+            filters = decodedFilters
+        }
+        
         return Subscription(
             id: entity.id ?? UUID(),
             topicName: entity.topicName ?? "",
@@ -240,7 +264,8 @@ class DatabaseManager: ObservableObject {
             latestMessage: entity.latestMessage,
             isActive: entity.isActive,
             serverURL: entity.serverURL ?? "",
-            notifications: notifications
+            notifications: notifications,
+            filters: filters
         )
     }
 } 

@@ -2,10 +2,17 @@ import SwiftUI
 import Foundation
 
 class SubscriptionViewModel: ObservableObject {
-    // Basic settings
+    // Basic subscription info
     @Published var topicName = ""
-    @Published var useAnotherServer = false
     @Published var serverURL = ""
+    @Published var useAnotherServer = false
+    
+    // UI unified filter
+    @Published var unifiedFilter = UINostrFilter()
+    
+    // Time filter controls
+    @Published var useSinceDate = false
+    @Published var useUntilDate = false
     
     // Basic push options
     @Published var enableBasicOptions = false
@@ -19,11 +26,6 @@ class SubscriptionViewModel: ObservableObject {
     
     // UI state for advanced filters
     @Published var useAdvancedFilters = false
-    @Published var useSinceDate = false
-    @Published var useUntilDate = false
-    
-    // Unified filter structure
-    @Published var unifiedFilter = UINostrFilter()
     
     struct UINostrFilter {
         var eventIds: [String] = []
@@ -47,6 +49,13 @@ class SubscriptionViewModel: ObservableObject {
     }
     
     init() {
+        // Default configuration
+        // Add some common event kinds
+        unifiedFilter.kinds = [1, 7, 6, 9735] // Text Notes, Likes, Reposts, Zaps
+        
+        // Add default relay
+        unifiedFilter.relays = ["ws://127.0.0.1:8080"]
+        
         // Set up observers for basic options changes
         setupObservers()
     }
@@ -131,11 +140,13 @@ class SubscriptionViewModel: ObservableObject {
     // MARK: - Tag Management
     
     func addTagFilter(key: String, value: String) {
-        let key = key.lowercased()
-        
         if let existingIndex = unifiedFilter.tags.firstIndex(where: { $0.key == key }) {
-            unifiedFilter.tags[existingIndex].values.append(value)
+            // Tag already exists, add value
+            if !unifiedFilter.tags[existingIndex].values.contains(value) {
+                unifiedFilter.tags[existingIndex].values.append(value)
+            }
         } else {
+            // New tag
             unifiedFilter.tags.append(TagFilter(key: key, values: [value]))
         }
     }
@@ -311,16 +322,15 @@ class SubscriptionViewModel: ObservableObject {
                     // Fetch events with kind 20284 and h tag = groupId
                     self.fetchGroupEvents(groupId: groupId)
                     
-                    // Create and save subscription with group ID
+                    // Create subscription with filter configuration
+                    let filters = self.convertUIFilterToNostrFilterConfig()
                     let subscription = Subscription(
                         topicName: self.topicName,
                         groupId: groupId,
-                        serverURL: self.useAnotherServer ? self.serverURL : ""
+                        serverURL: self.useAnotherServer ? self.serverURL : "",
+                        filters: filters
                     )
                     subscriptionManager.addSubscription(subscription)
-                    
-                    // Build subscription config for API call (for future implementation)
-                    let config = self.buildSubscriptionConfig()
                     
                     completion(true)
                 } else {
@@ -404,6 +414,59 @@ class SubscriptionViewModel: ObservableObject {
         } else {
             completion(false, nil)
         }
+    }
+    
+    // Convert UINostrFilter to NostrFilterConfig
+    func convertUIFilterToNostrFilterConfig() -> NostrFilterConfig {
+        var config = NostrFilterConfig()
+        
+        config.eventIds = unifiedFilter.eventIds
+        config.authors = unifiedFilter.authors
+        config.kinds = unifiedFilter.kinds
+        
+        // Convert UIFilterTag to dictionary format
+        var tagDict: [String: [String]] = [:]
+        for tag in unifiedFilter.tags {
+            tagDict[tag.key] = tag.values
+        }
+        config.tags = tagDict
+        
+        // Convert dates
+        config.since = useSinceDate ? unifiedFilter.sinceDate : nil
+        config.until = useUntilDate ? unifiedFilter.untilDate : nil
+        
+        config.relays = unifiedFilter.relays
+        
+        return config
+    }
+    
+    // Load from NostrFilterConfig to UI
+    func loadFromNostrFilterConfig(_ config: NostrFilterConfig) {
+        unifiedFilter.eventIds = config.eventIds
+        unifiedFilter.authors = config.authors
+        unifiedFilter.kinds = config.kinds
+        
+        // Convert dictionary to UIFilterTag
+        unifiedFilter.tags = config.tags.map { key, values in
+            TagFilter(key: key, values: values)
+        }
+        
+        // Set dates and states
+        if let since = config.since {
+            unifiedFilter.sinceDate = since
+            useSinceDate = true
+        } else {
+            useSinceDate = false
+        }
+        
+        if let until = config.until {
+            unifiedFilter.untilDate = until
+            useUntilDate = true
+        } else {
+            useUntilDate = false
+        }
+        
+        unifiedFilter.relays = config.relays
     }
 }
 

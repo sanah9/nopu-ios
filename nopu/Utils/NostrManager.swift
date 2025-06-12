@@ -22,10 +22,6 @@ public class NostrManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Constants
-    private static let popularRelays = [
-        "ws://127.0.0.1:8080"
-    ]
-    
     private static let privateKeyKey = "NostrManager.privateKey"
     
     // MARK: - Initialization
@@ -133,7 +129,7 @@ public class NostrManager: ObservableObject {
     // MARK: - Setup Methods
     
     /**
-     * Quick setup: auto-initialize keys + initialize client + add popular relays
+     * Quick setup: auto-initialize keys + initialize client
      * @return Returns true on success, false on failure
      */
     public func quickSetup() -> Bool {
@@ -147,25 +143,17 @@ public class NostrManager: ObservableObject {
             return false
         }
         
-        // 3. Add popular relays
-        for relayUrl in Self.popularRelays {
-            addRelay(url: relayUrl)
-        }
-        
         return true
     }
     
     /**
-     * Quick setup and connect
+     * Quick setup and connect (now connects only when relays are available)
      * @return Returns true on success, false on failure
      */
     public func quickSetupAndConnect() -> Bool {
         guard quickSetup() else {
             return false
         }
-        
-        // Connect to relays
-        relayPool?.connect()
         
         // Monitor connection status
         relayPool?.$relays
@@ -177,6 +165,18 @@ public class NostrManager: ObservableObject {
             .store(in: &cancellables)
         
         return true
+    }
+    
+    /**
+     * Connect to relays (only if relays are added)
+     */
+    public func connectIfRelaysAvailable() {
+        guard let relayPool = relayPool else { return }
+        
+        // Only connect if there are relays
+        if !relayPool.relays.isEmpty {
+            relayPool.connect()
+        }
     }
     
     /**
@@ -219,6 +219,16 @@ public class NostrManager: ObservableObject {
         } catch {
             self.lastError = "Failed to add relay: \(error.localizedDescription)"
         }
+    }
+    
+    /**
+     * Check if URL is a valid WebSocket URL
+     * @param urlString URL string to validate
+     * @return true if valid WebSocket URL
+     */
+    public func isValidWebSocketURL(_ urlString: String) -> Bool {
+        guard let url = URL(string: urlString) else { return false }
+        return url.scheme == "ws" || url.scheme == "wss"
     }
     
     // MARK: - Event Publishing
