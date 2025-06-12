@@ -324,14 +324,14 @@ struct CreateSubscriptionView: View {
         )
         
         // Fetch events with h tag filtering applied at Rust layer
-        let events = NostrUtils.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
+        let events = NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
         
         print("Fetched \(events.count) events with kind 20284 and h tag = \(groupId)")
         
         // Additional client-side verification (optional)
         let verifiedEvents = events.filter { event in
             return event.tags.contains { tag in
-                tag.count >= 2 && tag[0] == "h" && tag[1] == groupId
+                tag.name == "h" && tag.value == groupId
             }
         }
         
@@ -340,13 +340,13 @@ struct CreateSubscriptionView: View {
         // Print event details for debugging
         for event in verifiedEvents {
             print("Event ID: \(event.id), Content: \(event.content)")
-            print("Tags: \(event.tags)")
+            print("Tags: \(event.tags.map { "[\($0.name): \($0.value)]" })")
         }
     }
     
     private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
         // Create NIP-29 group using NostrUtils
-        guard NostrUtils.shared.isConnected else {
+        guard NostrManager.shared.isConnected else {
             print("Nostr client not connected")
             completion(false, nil)
             return
@@ -374,7 +374,7 @@ struct CreateSubscriptionView: View {
         ]
         
         // Publish kind 9007 event (NIP-29 group creation)
-        if let eventId = NostrUtils.shared.publishEvent(kind: 9007, content: "Create topic group: \(groupName)", tags: tags) {
+        if let eventId = NostrManager.shared.publishEvent(kind: 9007, content: "Create topic group: \(groupName)", tags: tags) {
             completion(true, eventId)
         } else {
             completion(false, nil)

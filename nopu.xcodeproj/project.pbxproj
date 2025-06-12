@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5E6E153E2DFA837300A2B3AA /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E153D2DFA837300A2B3AA /* NostrSDK */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5E2608C72DF7E97E00F63BC5 /* nopu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nopu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E6E153E2DFA837300A2B3AA /* NostrSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = nopu;
 			packageProductDependencies = (
+				5E6E153D2DFA837300A2B3AA /* NostrSDK */,
 			);
 			productName = nopu;
 			productReference = 5E2608C72DF7E97E00F63BC5 /* nopu.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 5E2608BE2DF7E97E00F63BC5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5E6E153C2DFA837300A2B3AA /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5E2608C82DF7E97E00F63BC5 /* Products */;
 			projectDirPath = "";
@@ -326,6 +335,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5E6E153C2DFA837300A2B3AA /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nostr-sdk/nostr-sdk-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E6E153D2DFA837300A2B3AA /* NostrSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E6E153C2DFA837300A2B3AA /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */;
+			productName = NostrSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5E2608BF2DF7E97E00F63BC5 /* Project object */;
 }
