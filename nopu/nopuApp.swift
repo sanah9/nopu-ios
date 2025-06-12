@@ -11,8 +11,8 @@ import SwiftUI
 struct nopuApp: App {
     
     init() {
-        // Automatically call quickSetup and connect when app launches
-        NostrManager.shared.quickSetupAndConnect()
+        // Initialize NostrManager
+        _ = NostrManager.shared.quickSetupAndConnect()
     }
     
     var body: some Scene {

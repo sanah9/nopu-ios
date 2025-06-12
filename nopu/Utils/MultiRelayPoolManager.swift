@@ -303,16 +303,10 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
         
         // Execute subscription
-        do {
-            let actualSubscriptionId = relayPool.subscribe(with: nostrFilter, subscriptionId: subscriptionId)
-            activeSubscriptions[subscriptionId] = actualSubscriptionId
-            print("Successfully subscribed \(subscriptionId) to \(serverURL)")
-            return actualSubscriptionId
-        } catch {
-            lastError = "Failed to subscribe: \(error.localizedDescription)"
-            print("Failed to subscribe \(subscriptionId) to \(serverURL): \(error)")
-            return nil
-        }
+        let actualSubscriptionId = relayPool.subscribe(with: nostrFilter, subscriptionId: subscriptionId)
+        activeSubscriptions[subscriptionId] = actualSubscriptionId
+        print("Successfully subscribed \(subscriptionId) to \(serverURL)")
+        return actualSubscriptionId
     }
     
     /**
@@ -341,12 +335,8 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         guard let relayPool = relayPool else { return }
         
         if let actualSubscriptionId = activeSubscriptions[subscriptionId] {
-            do {
-                try relayPool.closeSubscription(with: actualSubscriptionId)
-                activeSubscriptions.removeValue(forKey: subscriptionId)
-            } catch {
-                print("Failed to close subscription: \(error)")
-            }
+            relayPool.closeSubscription(with: actualSubscriptionId)
+            activeSubscriptions.removeValue(forKey: subscriptionId)
         }
     }
 
@@ -395,31 +385,34 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
         
         let wasConnected = self.isConnected
-        self.isConnected = !connectedRelays.isEmpty
-        self.activeRelays = relayInfos
         
-        // Update connection state
-        let newConnectionState: ConnectionState
-        if connectedRelays.isEmpty && relays.allSatisfy({ $0.state == .notConnected }) {
-            newConnectionState = .disconnected
-        } else if !connectedRelays.isEmpty {
-            newConnectionState = .connected
-        } else {
-            newConnectionState = .connecting
-        }
-        
-        let previousState = self.connectionState
-        self.connectionState = newConnectionState
-        
-        // Notify parent manager of connection state change
-        if wasConnected != self.isConnected {
-            onConnectionStateChanged?()
-        }
-        
-        // If just connected successfully, process pending subscriptions
-        if !wasConnected && self.isConnected && previousState != .connected && newConnectionState == .connected {
-            print("Connection established to \(serverURL), processing pending subscriptions...")
-            processPendingSubscriptions()
+        DispatchQueue.main.async {
+            self.isConnected = !connectedRelays.isEmpty
+            self.activeRelays = relayInfos
+            
+            // Update connection state
+            let newConnectionState: ConnectionState
+            if connectedRelays.isEmpty && relays.allSatisfy({ $0.state == .notConnected }) {
+                newConnectionState = .disconnected
+            } else if !connectedRelays.isEmpty {
+                newConnectionState = .connected
+            } else {
+                newConnectionState = .connecting
+            }
+            
+            let previousState = self.connectionState
+            self.connectionState = newConnectionState
+            
+            // Notify parent manager of connection state change
+            if wasConnected != self.isConnected {
+                self.onConnectionStateChanged?()
+            }
+            
+            // If just connected successfully, process pending subscriptions
+            if !wasConnected && self.isConnected && previousState != .connected && newConnectionState == .connected {
+                print("Connection established to \(self.serverURL), processing pending subscriptions...")
+                self.processPendingSubscriptions()
+            }
         }
     }
     
