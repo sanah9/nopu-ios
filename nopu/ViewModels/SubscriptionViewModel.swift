@@ -308,9 +308,6 @@ class SubscriptionViewModel: ObservableObject {
                 guard let self = self else { return }
                 
                 if success {
-                    print("NIP-29 group created successfully, event ID: \(eventId ?? "unknown")")
-                    print("Group ID: \(groupId)")
-                    
                     // Fetch events with kind 20284 and h tag = groupId
                     self.fetchGroupEvents(groupId: groupId)
                     
@@ -324,7 +321,6 @@ class SubscriptionViewModel: ObservableObject {
                     
                     // Build subscription config for API call (for future implementation)
                     let config = self.buildSubscriptionConfig()
-                    print("Subscription config:", config)
                     
                     completion(true)
                 } else {
@@ -350,8 +346,6 @@ class SubscriptionViewModel: ObservableObject {
         // Fetch events with h tag filtering applied at Rust layer
         let events = NostrManager.shared.fetchEvents(filter: filter, timeoutSeconds: 10)
         
-        print("Fetched \(events.count) events with kind 20284 and h tag = \(groupId)")
-        
         // Additional client-side verification (optional) - split into separate parts to help compiler
         let verifiedEvents = events.filter { event in
             let matchingTags = event.tags.filter { tag in
@@ -359,34 +353,17 @@ class SubscriptionViewModel: ObservableObject {
             }
             return !matchingTags.isEmpty
         }
-        
-        print("Verified \(verifiedEvents.count) events matching group ID: \(groupId)")
-        
-        // Print event details for debugging
-        for event in verifiedEvents {
-            print("Event ID: \(event.id), Content: \(event.content)")
-            let tagDescriptions = event.tags.map { tag in
-                "[\(tag.name): \(tag.value)]"
-            }
-            print("Tags: \(tagDescriptions)")
-        }
     }
     
     private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
         // Create NIP-29 group using NostrUtils
         guard NostrManager.shared.isConnected else {
-            print("Nostr client not connected")
             completion(false, nil)
             return
         }
         
-        // Debug: Print current filter states before building
-        print("🔧 Building filter - Basic options: likes=\(notifyOnLikes), reposts=\(notifyOnReposts), replies=\(notifyOnReplies), zaps=\(notifyOnZaps), follows=\(notifyOnFollowsPosts), dms=\(notifyOnDMs)")
-        print("🔧 User pubkey: '\(userPubkey)', hasBasicOptions: \(hasBasicOptionsSelected())")
-        
         // Build NostrFilter JSON string for about field (just the filter, not REQ format)
         let filterConfig = buildNostrFilter()
-        print("🔧 Built filter config: \(filterConfig)")
         let aboutJsonString: String
         
         do {
@@ -408,10 +385,7 @@ class SubscriptionViewModel: ObservableObject {
             // JSON encode the REQ array to string for about field
             let jsonData = try JSONSerialization.data(withJSONObject: reqArray, options: [])
             aboutJsonString = String(data: jsonData, encoding: .utf8) ?? "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
-            
-            print("About field REQ JSON string: \(aboutJsonString)")
         } catch {
-            print("Failed to serialize REQ format to JSON: \(error)")
             aboutJsonString = "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
         }
         
@@ -433,5 +407,4 @@ class SubscriptionViewModel: ObservableObject {
     }
 }
 
-// MARK: - Combine Import
-import Combine 
+import Combine

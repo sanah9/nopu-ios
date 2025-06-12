@@ -12,11 +12,7 @@ struct nopuApp: App {
     
     init() {
         // Automatically call quickSetup and connect when app launches
-        if NostrManager.shared.quickSetupAndConnect() {
-            print("✅ Nostr quick setup and connection successful")
-        } else {
-            print("❌ Nostr quick setup and connection failed: \(NostrManager.shared.lastError ?? "Unknown error")")
-        }
+        NostrManager.shared.quickSetupAndConnect()
     }
     
     var body: some Scene {

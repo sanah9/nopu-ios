@@ -30,7 +30,7 @@ public class NostrManager: ObservableObject {
     
     // MARK: - Initialization
     private init() {
-        print("🔧 NostrManager initialized")
+        // NostrManager initialized
     }
     
     // MARK: - Key Management
@@ -87,21 +87,16 @@ public class NostrManager: ObservableObject {
     public func autoInitializeKeys() -> Bool {
         // Try to load existing keys from UserDefaults
         if let savedPrivateKey = UserDefaults.standard.string(forKey: Self.privateKeyKey) {
-            print("🔑 Loading existing keys from storage")
             if importKeys(privateKey: savedPrivateKey) {
                 return true
-            } else {
-                print("⚠️ Failed to load saved keys, generating new ones")
             }
         }
         
         // Generate new keys if no saved keys or loading failed
-        print("🔑 Generating new keys")
         if generateNewKeys() {
             // Save the new private key
             if let privateKey = getPrivateKey() {
                 UserDefaults.standard.set(privateKey, forKey: Self.privateKeyKey)
-                print("✅ New keys generated and saved")
                 return true
             }
         }
@@ -116,7 +111,6 @@ public class NostrManager: ObservableObject {
     public func clearKeys() {
         UserDefaults.standard.removeObject(forKey: Self.privateKeyKey)
         self.keypair = nil
-        print("🗑️ Keys cleared")
     }
     
     // MARK: - Client Management
@@ -203,7 +197,7 @@ public class NostrManager: ObservableObject {
             "Connected to \(connectedRelays.count)/\(relays.count) relay(s)"
         self.activeRelays = relayInfos
         
-        print("📊 Connection status: \(connectedRelays.count)/\(relays.count) relays connected")
+        // Connection status updated
     }
     
     // MARK: - Relay Management
@@ -222,10 +216,8 @@ public class NostrManager: ObservableObject {
         do {
             let relay = try Relay(url: relayURL)
             relayPool.add(relay: relay)
-            print("✅ Relay added: \(url)")
         } catch {
             self.lastError = "Failed to add relay: \(error.localizedDescription)"
-            print("❌ Failed to add relay: \(url), error: \(error)")
         }
     }
     
@@ -262,8 +254,6 @@ public class NostrManager: ObservableObject {
             
             // Create and sign the event
             let event = try NostrEvent(kind: eventKind, content: content, tags: eventTags, signedBy: keypair)
-            
-            print("📤 Publishing event - ID: \(event.id), Kind: \(event.kind), Content: \(event.content), Tags: \(event.tags), CreatedAt: \(event.createdAt)")
             
             // Send to relay pool
             relayPool.publishEvent(event)
@@ -304,7 +294,6 @@ public class NostrManager: ObservableObject {
                     if let tagChar = tagArray[0].first, tagArray[0].count == 1 {
                         let tagValues = Array(tagArray.dropFirst())
                         tagDict[tagChar] = tagValues
-                        print("🏷️ Added tag filter: '\(tagChar)' = \(tagValues)")
                     }
                 }
             }
@@ -325,13 +314,7 @@ public class NostrManager: ObservableObject {
             return []
         }
         
-        // Log the original requested tags for debugging
-        if let tags = filter.tags, !tags.isEmpty {
-            print("🏷️ Original requested tags: \(tags)")
-        }
-        
         // Subscribe to get events
-        print("🔍 NostrFilter: \(nostrFilter)")
         let subscriptionId = relayPool.subscribe(with: nostrFilter)
         
         return []
