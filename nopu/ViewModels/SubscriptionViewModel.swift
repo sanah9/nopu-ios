@@ -311,7 +311,7 @@ class SubscriptionViewModel: ObservableObject {
             if let token = PushTokenManager.shared.token, !token.isEmpty {
                 subscriptionId = token
             } else {
-                subscriptionId = UUID().uuidString.lowercased()
+                subscriptionId = ""
             }
             var reqArray: [Any] = ["REQ", subscriptionId]
             
