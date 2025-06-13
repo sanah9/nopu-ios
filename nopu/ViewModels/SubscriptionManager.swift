@@ -150,7 +150,7 @@ class SubscriptionManager: ObservableObject {
                 filter: filter
             )
             
-            print("Created subscription for server \(group.serverURL) with \(group.groupIds.count) groups")
+    
         }
     }
     
@@ -278,7 +278,7 @@ class SubscriptionManager: ObservableObject {
             filter: filter
         )
         
-        print("Created connection for new subscription \(subscription.topicName)")
+
     }
     
     // Update NostrManager relays for new subscription
@@ -314,7 +314,7 @@ class SubscriptionManager: ObservableObject {
             NostrManager.shared.addRelay(url: relayURL)
         }
         
-        print("Reconfigured NostrManager relays: \(Array(currentRelayURLs))")
+
     }
     
     // Get connection status info
@@ -329,26 +329,41 @@ class SubscriptionManager: ObservableObject {
         return multiRelayManager.serverConnections
     }
     
+    // Get notification message based on event kind
+    private func getNotificationMessage(for eventKind: Int) -> String {
+        switch eventKind {
+        case 1:
+            return "Received a new note"
+        case 7:
+            return "Received a like message"
+        case 4:
+        case 1059:
+            return "Received a direct message"
+        case 6:
+            return "Received a repost message"
+        case 9735:
+            return "Received a zap message"
+        default:
+            return "Received a new notification"
+        }
+    }
+    
     // Handle 20284 event
     func handleEvent20284(_ eventString: String) {
-        print("Starting to process 20284 event: \(eventString)")
-        
         guard let (groupId, eventContent) = eventProcessor.processEvent20284(eventString) else {
             print("Failed to process 20284 event")
             return
         }
-        print("Successfully parsed event - groupId: \(groupId), eventContent: \(eventContent)")
         
         // Find corresponding subscription
         guard let subscription = subscriptions.first(where: { $0.groupId == groupId }) else {
             print("Subscription not found - groupId: \(groupId)")
             return
         }
-        print("Found corresponding subscription - topicName: \(subscription.topicName)")
         
         // Create notification
         let notification = NotificationItem(
-            message: "New group event",
+            message: getNotificationMessage(for: 20284),
             type: .general,
             eventJSON: eventContent,
             authorPubkey: nil,
@@ -356,7 +371,6 @@ class SubscriptionManager: ObservableObject {
             eventKind: 20284,
             eventCreatedAt: Date()
         )
-        print("Created new notification - message: \(notification.message), type: \(notification.type)")
         
         // Update subscription
         var updatedSubscription = subscription
