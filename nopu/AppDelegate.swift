@@ -24,6 +24,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if let userInfo = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
             handlePushPayload(userInfo)
         }
+
+        // Load previously saved device token (if any) into memory
+        _ = PushTokenManager.shared // initialize
+
         return true
     }
 
@@ -91,5 +95,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 databaseManager.appendNotification(subscriptionId: subId, notification: item)
             }
         }
+    }
+
+    // Save device token when successfully registered
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
+        PushTokenManager.shared.token = tokenString
+        print("APNs device token: \(tokenString)")
     }
 } 

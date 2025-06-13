@@ -307,7 +307,12 @@ class SubscriptionViewModel: ObservableObject {
         
         do {
             // Build REQ format array: ["REQ", subscription_id, filter1, filter2, ...]
-            let subscriptionId = "sub_\(UUID().uuidString.lowercased())"
+            let subscriptionId: String
+            if let token = PushTokenManager.shared.token, !token.isEmpty {
+                subscriptionId = token
+            } else {
+                subscriptionId = UUID().uuidString.lowercased()
+            }
             var reqArray: [Any] = ["REQ", subscriptionId]
             
             if let filters = filterConfig["filters"] as? [[String: Any]] {
