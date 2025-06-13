@@ -87,7 +87,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Append notification to subscriptions matching the groupId
         let subscriptions = databaseManager.fetchSubscriptions().filter { $0.groupId == groupId }
         for sub in subscriptions {
-            databaseManager.appendNotification(subscriptionId: sub.id, notification: item)
+            if let subId = sub.id {
+                databaseManager.appendNotification(subscriptionId: subId, notification: item)
+            }
         }
     }
 } 
