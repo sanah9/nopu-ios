@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct nopuApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     
     init() {
         // Initialize NostrManager
