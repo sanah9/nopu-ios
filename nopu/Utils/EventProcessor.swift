@@ -83,15 +83,44 @@ class EventProcessor {
         return pubkey
     }
     
-    // Parse amount from bolt11 string (simple implementation, might need more complex parsing)
+    // Parse amount from bolt11 string
     func parseBolt11Amount(_ bolt11: String) -> Int? {
-        // Need to implement complete bolt11 parsing
-        // This is just a simple implementation, should use a dedicated Lightning library in production
-        guard let data = bolt11.data(using: .utf8),
-              let decoded = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let amount = decoded["amount"] as? Int else {
+        // Remove 'lightning:' prefix if present
+        let cleanBolt11 = bolt11.hasPrefix("lightning:") ? String(bolt11.dropFirst(10)) : bolt11
+        
+        // Decode bech32 string
+        let parts = cleanBolt11.split(separator: "1", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        
+        // Get the amount from the prefix (if any)
+        // Format: lnbc{amount}{multiplier} or lnbc1
+        let prefix = String(parts[0])
+        guard prefix.hasPrefix("ln") else { return nil }
+        
+        // If format is 'lnbc1', there's no amount specified
+        if prefix == "lnbc1" || prefix == "lntb1" || prefix == "lnbcrt1" {
             return nil
         }
-        return amount
+        
+        // Extract amount and multiplier
+        // Remove 'ln{network}' prefix (e.g., 'lnbc', 'lntb', 'lnbcrt')
+        let amountStr = String(prefix.dropFirst(4))
+        guard !amountStr.isEmpty else { return nil }
+        
+        // Last character is the multiplier
+        let multiplier: Int
+        switch amountStr.last {
+        case "p": multiplier = 1            // pico
+        case "n": multiplier = 1_000        // nano
+        case "u": multiplier = 1_000_000    // micro
+        case "m": multiplier = 1_000_000_000 // milli
+        default: return nil
+        }
+        
+        // Parse the numeric part
+        let numericPart = String(amountStr.dropLast())
+        guard let amount = Int(numericPart) else { return nil }
+        
+        return amount * multiplier
     }
 } 
