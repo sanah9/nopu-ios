@@ -206,6 +206,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var activeSubscriptions: [String: String] = [:] // subscriptionId -> filter
     private var pendingSubscriptions: [(String, [String: Any])] = [] // Pending subscriptions queue
+    private var activeSubscriptionFilters: [String: [String: Any]] = [:] // Store all active subscription information, subscriptionId -> filter
     
     // Connection state change callback
     var onConnectionStateChanged: (() -> Void)?
@@ -222,6 +223,8 @@ public class ServerConnection: ObservableObject, RelayDelegate {
             case .connected:
                 self.connectionState = .connected
                 self.isConnected = true
+                // Process any pending subscriptions after successful connection
+                self.processPendingSubscriptions()
             case .connecting:
                 self.connectionState = .connecting
             case .notConnected:
@@ -326,6 +329,17 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     public func disconnect() {
         shouldAutoReconnect = false
         connectionState = .disconnected
+        
+        // Close all active subscriptions
+        if let relayPool = relayPool {
+            for (subscriptionId, actualSubscriptionId) in activeSubscriptions {
+                relayPool.closeSubscription(with: actualSubscriptionId)
+                print("Closed subscription \(subscriptionId) during disconnect")
+            }
+        }
+        
+        // Clear active subscription records but keep subscription info for reconnection
+        activeSubscriptions.removeAll()
         // Clear pending subscriptions
         pendingSubscriptions.removeAll()
         relayPool?.disconnect()
@@ -340,6 +354,8 @@ public class ServerConnection: ObservableObject, RelayDelegate {
      * @return Actual subscription ID
      */
     public func subscribe(subscriptionId: String, filter: [String: Any]) -> String? {
+        activeSubscriptionFilters[subscriptionId] = filter
+        
         // If already connected, subscribe immediately
         if connectionState == .connected {
             return executeSubscription(subscriptionId: subscriptionId, filter: filter)
@@ -391,10 +407,6 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         for (subscriptionId, filter) in subscriptionsToProcess {
             let _ = executeSubscription(subscriptionId: subscriptionId, filter: filter)
         }
-        
-        if !subscriptionsToProcess.isEmpty {
-            print("Processed \(subscriptionsToProcess.count) pending subscriptions for \(serverURL)")
-        }
     }
     
     /**
@@ -407,6 +419,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         if let actualSubscriptionId = activeSubscriptions[subscriptionId] {
             relayPool.closeSubscription(with: actualSubscriptionId)
             activeSubscriptions.removeValue(forKey: subscriptionId)
+            activeSubscriptionFilters.removeValue(forKey: subscriptionId)
         }
     }
 
@@ -544,15 +557,25 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     private func handleReconnection() {
         guard shouldAutoReconnect else { return }
         
+        // Save current subscription information
+        let subscriptionsToRestore = activeSubscriptionFilters
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
             
             if self.connectionState == .disconnected && self.shouldAutoReconnect {
+                self.activeSubscriptions.removeAll()
+                
                 self.relayPool?.disconnect()
                 self.relayPool = nil
                 self.setupRelayPool()
                 
                 if self.relayPool != nil {
+                    // Add all subscriptions to pending queue before connecting
+                    for (subscriptionId, filter) in subscriptionsToRestore {
+                        self.pendingSubscriptions.append((subscriptionId, filter))
+                    }
+                    
                     self.connect()
                 }
             }
