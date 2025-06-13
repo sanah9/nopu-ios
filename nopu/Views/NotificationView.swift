@@ -211,11 +211,17 @@ struct SubscriptionRowContent: View {
                         // Unread badge
                         if subscription.unreadCount > 0 {
                             ZStack {
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 20, height: 20)
+                                if subscription.unreadCount > 99 {
+                                    Capsule()
+                                        .fill(Color.red)
+                                        .frame(width: 28, height: 20)
+                                } else {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 20, height: 20)
+                                }
                                 
-                                Text("\(subscription.unreadCount)")
+                                Text(subscription.unreadCount > 99 ? "99+" : "\(subscription.unreadCount)")
                                     .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(.white)
                             }
