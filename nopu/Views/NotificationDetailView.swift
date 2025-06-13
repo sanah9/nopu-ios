@@ -12,86 +12,111 @@ struct NotificationDetailView: View {
     @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var selectedNotification: NotificationItem?
     @State private var showingEditView = false
+    @State private var visibleRange: Range<Int> = 0..<20 // Initially load 20 items
     
     var body: some View {
-            VStack(spacing: 0) {
-                if subscription.notifications.isEmpty {
-                    // Empty state view
-                    VStack(spacing: 24) {
-                        Spacer()
-                        
-                        VStack(spacing: 16) {
-                            Image(systemName: "bell.slash")
-                                .font(.system(size: 50))
-                                .foregroundColor(.secondary)
-                            
-                            Text("No Notifications")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("This subscription hasn't received any notifications yet")
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 32)
-                } else {
-                    // Notification list
-                    List {
-                        ForEach(subscription.notifications) { notification in
+        VStack(spacing: 0) {
+            if subscription.notifications.isEmpty {
+                EmptyNotificationView()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(subscription.notifications[visibleRange].enumerated()), id: \.1.id) { index, notification in
                             NotificationItemRow(
                                 notification: notification,
                                 onTap: {
                                     selectedNotification = notification
                                 }
                             )
+                            .equatable()
+                            .id(notification.id) // Preserve scroll position
+                            .onAppear {
+                                // Load more when the last 5 items come into view
+                                if index >= visibleRange.upperBound - 5 && visibleRange.upperBound < subscription.notifications.count {
+                                    loadMore()
+                                }
+                            }
                         }
                     }
-                    .listStyle(PlainListStyle())
+                    .padding(.horizontal)
                 }
             }
-            .navigationTitle(subscription.topicName)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Edit") {
-                        showingEditView = true
+        }
+        .navigationTitle(subscription.topicName)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Edit") {
+                    showingEditView = true
+                }
+                .foregroundColor(.blue)
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if !subscription.notifications.isEmpty {
+                    Button("Mark All Read") {
+                        subscriptionManager.markAsRead(id: subscription.id)
                     }
                     .foregroundColor(.blue)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if !subscription.notifications.isEmpty {
-                        Button("Mark All Read") {
-                            subscriptionManager.markAsRead(id: subscription.id)
-                        }
-                        .foregroundColor(.blue)
-                        .disabled(subscription.unreadCount == 0)
-                    }
+                    .disabled(subscription.unreadCount == 0)
                 }
             }
-            .onAppear {
-                // Mark as read when the page appears
-                subscriptionManager.markAsRead(id: subscription.id)
-            }
-            .sheet(item: $selectedNotification) { notification in
-                NotificationEventDetailView(notification: notification)
-            }
-            .sheet(isPresented: $showingEditView) {
-                EditSubscriptionView(
-                    subscription: subscription,
-                    subscriptionManager: subscriptionManager
-                )
-            }
+        }
+        .onAppear {
+            subscriptionManager.markAsRead(id: subscription.id)
+        }
+        .sheet(item: $selectedNotification) { notification in
+            NotificationEventDetailView(notification: notification)
+        }
+        .sheet(isPresented: $showingEditView) {
+            EditSubscriptionView(
+                subscription: subscription,
+                subscriptionManager: subscriptionManager
+            )
+        }
+    }
+    
+    private func loadMore() {
+        let newUpperBound = min(visibleRange.upperBound + 20, subscription.notifications.count)
+        visibleRange = visibleRange.lowerBound..<newUpperBound
     }
 }
 
-struct NotificationItemRow: View {
+// Empty state view component
+struct EmptyNotificationView: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Image(systemName: "bell.slash")
+                    .font(.system(size: 50))
+                    .foregroundColor(.secondary)
+                
+                Text("No Notifications")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text("This subscription hasn't received any notifications yet")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+    }
+}
+
+struct NotificationItemRow: View, Equatable {
     let notification: NotificationItem
     let onTap: () -> Void
+    
+    // MARK: - Equatable
+    static func == (lhs: NotificationItemRow, rhs: NotificationItemRow) -> Bool {
+        lhs.notification.id == rhs.notification.id && lhs.notification.isRead == rhs.notification.isRead
+    }
     
     var body: some View {
         Button(action: onTap) {
@@ -186,10 +211,15 @@ struct NotificationItemRow: View {
         }
     }
     
-    private func formatRelativeTime(_ date: Date) -> String {
+    // Use a static cached RelativeDateTimeFormatter to reduce allocations
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = Locale(identifier: "en_US")
         formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return formatter
+    }()
+
+    private func formatRelativeTime(_ date: Date) -> String {
+        Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 } 
