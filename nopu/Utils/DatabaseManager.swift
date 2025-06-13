@@ -221,7 +221,44 @@ class DatabaseManager: ObservableObject {
         }
     }
     
+    /// Append a detailed NotificationItem to a subscription by id, avoiding expensive full updates
+    func appendNotification(subscriptionId: UUID, notification: NotificationItem) {
+        let request: NSFetchRequest<SubscriptionEntity> = SubscriptionEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", subscriptionId as CVarArg)
 
+        do {
+            guard let entity = try context.fetch(request).first else { return }
+
+            let notificationEntity = NotificationEntity(context: context)
+            notificationEntity.id = notification.id
+            notificationEntity.message = notification.message
+            notificationEntity.receivedAt = notification.receivedAt
+            notificationEntity.isRead = notification.isRead
+            notificationEntity.type = notification.type.rawValue
+            notificationEntity.eventJSON = notification.eventJSON
+            notificationEntity.relayURL = notification.relayURL
+            notificationEntity.authorPubkey = notification.authorPubkey
+            notificationEntity.eventId = notification.eventId
+            if let kind = notification.eventKind { notificationEntity.eventKind = Int32(kind) }
+            notificationEntity.eventCreatedAt = notification.eventCreatedAt
+            notificationEntity.subscription = entity
+
+            // Update summary fields
+            entity.unreadCount += 1
+            entity.latestMessage = notification.message
+            entity.lastNotificationAt = Date()
+
+            // Keep only newest 100 notifications
+            if let allNotifs = entity.notifications?.allObjects as? [NotificationEntity], allNotifs.count > 100 {
+                let sorted = allNotifs.sorted { ($0.receivedAt ?? Date()) > ($1.receivedAt ?? Date()) }
+                for old in sorted.dropFirst(100) { context.delete(old) }
+            }
+
+            save()
+        } catch {
+            print("appendNotification error: \(error)")
+        }
+    }
     
     // MARK: - Utility Methods
     

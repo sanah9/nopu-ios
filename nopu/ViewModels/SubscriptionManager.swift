@@ -351,55 +351,62 @@ class SubscriptionManager: ObservableObject {
     }
     
     // Get notification message based on event kind
-    private func getNotificationMessage(for eventKind: Int, eventContent: String) -> String {
+    private func getNotificationMessage(for eventKind: Int, eventData: [String: Any]) -> String {
+        let tags = eventData["tags"] as? [[String]] ?? []
+        let content = eventData["content"] as? String ?? "No content"
+
+        func tagValue(_ name: String) -> String? {
+            for tag in tags where tag.count >= 2 && tag[0] == name {
+                return tag[1]
+            }
+            return nil
+        }
+
         switch eventKind {
         case 1:
-            // Check if it's a reply or quote repost
-            if eventProcessor.getTagValue(from: eventContent, tagName: "p") != nil {
-                if eventProcessor.getTagValue(from: eventContent, tagName: "q") != nil {
-                    // Quote repost
-                    let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
+            // Text note: determine if reply or quote repost via tags
+            if let _ = tagValue("p") {
+                if let _ = tagValue("q") {
                     return "Quote reposted your message: \(content)"
                 } else {
-                    // Reply
-                    let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
                     return "Replied to your message: \(content)"
                 }
-            } else {
-                // Regular text message
-                let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
-                return "New message: \(content)"
             }
+            return "New message: \(content)"
+
         case 7:
             // Like
-            if let pubkey = eventProcessor.getEventPubkey(from: eventContent),
-               let content = eventProcessor.getEventContent(from: eventContent) {
+            if let pubkey = eventData["pubkey"] as? String {
                 return "\(pubkey.prefix(8)) liked message: \(content)"
             }
             return "Received a like"
+
         case 1059:
             // Direct message
-            if let pTag = eventProcessor.getTagValue(from: eventContent, tagName: "p") {
+            if let pTag = tagValue("p") {
                 return "Received DM from \(pTag.prefix(8))"
             }
             return "Received a direct message"
+
         case 6:
             // Repost
-            if let pubkey = eventProcessor.getEventPubkey(from: eventContent) {
+            if let pubkey = eventData["pubkey"] as? String {
                 return "\(pubkey.prefix(8)) reposted your message"
             }
             return "Message was reposted"
+
         case 9735:
-            // Zap
-            if let pTag = eventProcessor.getTagValue(from: eventContent, tagName: "p"),
-               let bolt11 = eventProcessor.getTagValue(from: eventContent, tagName: "bolt11") {
+            // Zap payment
+            if let pTag = tagValue("p"),
+               let bolt11 = tagValue("bolt11") {
                 let amount = eventProcessor.parseBolt11Amount(bolt11) ?? 0
-                if let PTag = eventProcessor.getTagValue(from: eventContent, tagName: "P") {
+                if let PTag = tagValue("P") {
                     return "\(pTag.prefix(8)) received \(amount) sats from \(PTag.prefix(8))"
                 }
                 return "\(pTag.prefix(8)) received \(amount) sats"
             }
             return "Received a Zap"
+
         default:
             return "Received a new notification"
         }
@@ -407,25 +414,35 @@ class SubscriptionManager: ObservableObject {
     
     // Handle 20284 event
     func handleEvent20284(_ eventString: String) {
+        // Parse the incoming event only once to avoid repeated JSON parsing
         guard let (groupId, eventContent) = eventProcessor.processEvent20284(eventString) else {
             print("Failed to process 20284 event")
             return
         }
-        
+
+        // Convert JSON string into dictionary for reuse
+        guard let contentData = eventContent.data(using: .utf8),
+              let eventDict = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] else {
+            print("Failed to parse inner event JSON")
+            return
+        }
+
+        let eventKind = eventDict["kind"] as? Int ?? 1
+
         // Find corresponding subscription
         guard let subscription = subscriptions.first(where: { $0.groupId == groupId }) else {
             print("Subscription not found - groupId: \(groupId)")
             return
         }
-        
-        // Create notification
+
+        // Create notification with generated message
         let notification = NotificationItem(
-            message: getNotificationMessage(for: eventProcessor.getEventKind(from: eventContent), eventContent: eventContent),
+            message: getNotificationMessage(for: eventKind, eventData: eventDict),
             type: .general,
             eventJSON: eventContent,
             authorPubkey: nil,
             eventId: nil,
-            eventKind: eventProcessor.getEventKind(from: eventContent),
+            eventKind: eventKind,
             eventCreatedAt: Date()
         )
         
@@ -436,10 +453,16 @@ class SubscriptionManager: ObservableObject {
         updatedSubscription.lastNotificationAt = Date()
         updatedSubscription.latestMessage = notification.message
         
-        // Update database and UI on main thread
-        DispatchQueue.main.async {
-            self.databaseManager.updateSubscription(updatedSubscription)
-            self.loadSubscriptions() // Reload to update UI
+        // Perform database write on the main thread to avoid Core Data concurrency issues
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            // Append notification in Core Data (cheaper than full update)
+            self.databaseManager.appendNotification(subscriptionId: updatedSubscription.id, notification: notification)
+
+            if let idx = self.subscriptions.firstIndex(where: { $0.id == updatedSubscription.id }) {
+                self.subscriptions[idx] = updatedSubscription
+                self.updateServerGroups()
+            }
         }
     }
 } 
