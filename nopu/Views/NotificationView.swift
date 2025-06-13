@@ -193,11 +193,6 @@ struct SubscriptionRowContent: View {
                     
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(subscription.filterSummary)
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                            
                             if let latestMessage = subscription.latestMessage {
                                 Text(latestMessage)
                                     .font(.system(size: 14))
