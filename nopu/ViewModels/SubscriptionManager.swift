@@ -136,8 +136,9 @@ class SubscriptionManager: ObservableObject {
                 relayURLs: uniqueRelayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : uniqueRelayURLs
             )
             
-            // Connect server
-            serverConnection.connect()
+            if serverConnection.connectionState == .disconnected {
+                serverConnection.connect()
+            }
             
             // Create subscription for each group
             let subscriptionId = "sub_\(group.serverURL)_\(UUID().uuidString.prefix(8))"
@@ -261,8 +262,9 @@ class SubscriptionManager: ObservableObject {
             relayURLs: relayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : relayURLs
         )
         
-        // Connect server
-        serverConnection.connect()
+        if serverConnection.connectionState == .disconnected {
+            serverConnection.connect()
+        }
         
         // Create subscription for single subscription
         let subscriptionId = "sub_\(subscription.groupId)"
@@ -336,7 +338,6 @@ class SubscriptionManager: ObservableObject {
             return "Received a new note"
         case 7:
             return "Received a like message"
-        case 4:
         case 1059:
             return "Received a direct message"
         case 6:
