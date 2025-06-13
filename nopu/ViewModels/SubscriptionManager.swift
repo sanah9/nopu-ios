@@ -181,14 +181,30 @@ class SubscriptionManager: ObservableObject {
     }
     
     func removeSubscription(id: UUID) {
+        // Locate the subscription to delete so we can properly unsubscribe and disconnect
+        guard let subscription = subscriptions.first(where: { $0.id == id }) else {
+            databaseManager.deleteSubscription(id: id)
+            loadSubscriptions() // Reload UI even if not found (keep state consistent)
+            updateServerGroups()
+            return
+        }
+
+        // 1️⃣ Unsubscribe from MultiRelayPoolManager first
+        let serverURL = subscription.serverURL.isEmpty ? "default" : subscription.serverURL
+        let subscriptionId = "sub_\(subscription.groupId)"
+        multiRelayManager.unsubscribe(serverURL: serverURL, subscriptionId: subscriptionId)
+
+        // 2️⃣ Remove from the database
         databaseManager.deleteSubscription(id: id)
-        loadSubscriptions() // Reload to update UI
-        updateServerGroups() // Update groups
-        
-        // Reconfigure NostrManager relays (remove potentially unneeded relays)
+
+        // 3️⃣ Update in-memory list and UI
+        loadSubscriptions()
+        updateServerGroups()
+
+        // 4️⃣ Reconfigure relays (may remove ones no longer needed)
         reconfigureNostrManagerRelays()
-        
-        // Reset connections (may need to remove some subscriptions)
+
+        // 5️⃣ If auto-connect is enabled, rebuild/cleanup connections
         if isAutoConnectEnabled {
             setupAutoConnections()
         }

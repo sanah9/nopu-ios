@@ -314,6 +314,9 @@ public class ServerConnection: ObservableObject, RelayDelegate {
      * Connect to relays
      */
     public func connect() {
+        // Ensure the auto-reconnect flag is reset for a new connection attempt
+        shouldAutoReconnect = true
+        
         guard let relayPool = relayPool else {
             lastError = "Relay pool not initialized"
             return
@@ -420,6 +423,12 @@ public class ServerConnection: ObservableObject, RelayDelegate {
             relayPool.closeSubscription(with: actualSubscriptionId)
             activeSubscriptions.removeValue(forKey: subscriptionId)
             activeSubscriptionFilters.removeValue(forKey: subscriptionId)
+        }
+        
+        // 🚦 If no active or pending subscriptions remain, disconnect and release the RelayPool to free resources
+        if activeSubscriptions.isEmpty && pendingSubscriptions.isEmpty {
+            print("No active subscriptions remain for \(serverURL). Disconnecting relay pool.")
+            disconnect()
         }
     }
 
