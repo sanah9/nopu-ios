@@ -88,39 +88,42 @@ class EventProcessor {
         // Remove 'lightning:' prefix if present
         let cleanBolt11 = bolt11.hasPrefix("lightning:") ? String(bolt11.dropFirst(10)) : bolt11
         
-        // Decode bech32 string
-        let parts = cleanBolt11.split(separator: "1", maxSplits: 1)
-        guard parts.count == 2 else { return nil }
+        // Find the first digit in the string
+        guard let firstDigitIndex = cleanBolt11.firstIndex(where: { $0.isNumber }) else { return nil }
         
-        // Get the amount from the prefix (if any)
-        // Format: lnbc{amount}{multiplier} or lnbc1
-        let prefix = String(parts[0])
-        guard prefix.hasPrefix("ln") else { return nil }
+        // Get the substring from the first digit
+        let amountPart = String(cleanBolt11[firstDigitIndex...])
         
-        // If format is 'lnbc1', there's no amount specified
-        if prefix == "lnbc1" || prefix == "lntb1" || prefix == "lnbcrt1" {
-            return nil
+        // Extract numeric part and multiplier
+        var numericPart = ""
+        var multiplierStr = ""
+        
+        for char in amountPart {
+            if char.isNumber {
+                numericPart.append(char)
+            } else {
+                multiplierStr.append(char)
+                break  // Stop at the first non-numeric character
+            }
         }
         
-        // Extract amount and multiplier
-        // Remove 'ln{network}' prefix (e.g., 'lnbc', 'lntb', 'lnbcrt')
-        let amountStr = String(prefix.dropFirst(4))
-        guard !amountStr.isEmpty else { return nil }
+        guard !numericPart.isEmpty, !multiplierStr.isEmpty else { return nil }
+        guard let amount = Double(numericPart) else { return nil }
         
-        // Last character is the multiplier
-        let multiplier: Int
-        switch amountStr.last {
-        case "p": multiplier = 1            // pico
-        case "n": multiplier = 1_000        // nano
-        case "u": multiplier = 1_000_000    // micro
-        case "m": multiplier = 1_000_000_000 // milli
+        // Calculate multiplier
+        let multiplier: Double
+        switch multiplierStr {
+        case "p": multiplier = 0.000000000001 // pico
+        case "n": multiplier = 0.000000001    // nano
+        case "u": multiplier = 0.000001       // micro
+        case "m": multiplier = 0.001          // milli
         default: return nil
         }
         
-        // Parse the numeric part
-        let numericPart = String(amountStr.dropLast())
-        guard let amount = Int(numericPart) else { return nil }
+        // Convert to satoshis (1 BTC = 100,000,000 satoshis)
+        let btcAmount = amount * multiplier
+        let satoshis = btcAmount * 100_000_000
         
-        return amount * multiplier
+        return Int(satoshis)
     }
 } 

@@ -395,7 +395,7 @@ class SubscriptionManager: ObservableObject {
                let bolt11 = eventProcessor.getTagValue(from: eventContent, tagName: "bolt11") {
                 let amount = eventProcessor.parseBolt11Amount(bolt11) ?? 0
                 if let PTag = eventProcessor.getTagValue(from: eventContent, tagName: "P") {
-                    return "\(PTag.prefix(8)) sent \(amount) sats to \(pTag.prefix(8))"
+                    return "\(pTag.prefix(8)) received \(amount) sats from \(PTag.prefix(8))"
                 }
                 return "\(pTag.prefix(8)) received \(amount) sats"
             }
