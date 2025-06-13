@@ -307,14 +307,94 @@ class SubscriptionViewModel: ObservableObject {
         return config
     }
     
-    // MARK: - NIP-29 Group Creation
+    // MARK: - NIP-29 Group Management
+    
+    func buildAboutJsonString() -> String {
+        let filterConfig = buildNostrFilter()
+        
+        do {
+            // Build REQ format array: ["REQ", subscription_id, filter1, filter2, ...]
+            let subscriptionId = "sub_\(UUID().uuidString.lowercased())"
+            var reqArray: [Any] = ["REQ", subscriptionId]
+            
+            if let filters = filterConfig["filters"] as? [[String: Any]] {
+                reqArray.append(contentsOf: filters)
+            } else if !filterConfig.isEmpty {
+                reqArray.append(filterConfig)
+            }
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: reqArray, options: [])
+            return String(data: jsonData, encoding: .utf8) ?? ""
+        } catch {
+            return ""
+        }
+    }
+    
+    private func createNIP29Group(groupId: String, groupName: String, aboutJsonString: String, completion: @escaping (Bool, String?) -> Void) {
+        // Create NIP-29 group using NostrUtils
+        guard NostrManager.shared.isConnected else {
+            completion(false, nil)
+            return
+        }
+        
+        // Step 1: Create group with kind 9007 event
+        // Only h tag is needed for group creation
+        let createGroupTags: [[String]] = [
+            ["h", groupId]
+        ]
+        
+        // Publish kind 9007 event to create the group
+        guard NostrManager.shared.publishEvent(
+            kind: 9007,
+            content: "Create topic group: \(groupName)",
+            tags: createGroupTags
+        ) != nil else {
+            completion(false, nil)
+            return
+        }
+        
+        // Step 2: Set group configuration with kind 9002 event
+        updateGroupConfig(groupId: groupId, groupName: groupName, aboutJsonString: aboutJsonString) { success, eventId in
+            completion(success, eventId)
+        }
+    }
+    
+    func updateGroupConfig(groupId: String, groupName: String, aboutJsonString: String, completion: @escaping (Bool, String?) -> Void) {
+        guard NostrManager.shared.isConnected else {
+            completion(false, nil)
+            return
+        }
+        
+        // Set group configuration tags
+        let configTags: [[String]] = [
+            ["h", groupId],           // Group identifier
+            ["name", groupName],      // Group name
+            ["about", aboutJsonString], // NostrFilter as JSON string
+            ["private"],
+            ["closed"]
+        ]
+        
+        // Publish kind 9002 event to update group configuration
+        if let configEventId = NostrManager.shared.publishEvent(
+            kind: 9002,
+            content: "Update topic group: \(groupName)",
+            tags: configTags
+        ) {
+            completion(true, configEventId)
+        } else {
+            completion(false, nil)
+        }
+    }
     
     func createSubscriptionWithGroup(subscriptionManager: SubscriptionManager, completion: @escaping (Bool) -> Void) {
         // Generate a unique group ID
         let groupId = UUID().uuidString.lowercased()
         
+        // Build about JSON string first
+        let aboutJsonString = buildAboutJsonString()
+        
         // Create NIP-29 group creation event (kind 9007)
-        createNIP29Group(groupId: groupId, groupName: topicName) { [weak self] success, eventId in
+        createNIP29Group(groupId: groupId, groupName: topicName, aboutJsonString: aboutJsonString) { [weak self] success, eventId in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 
@@ -361,57 +441,6 @@ class SubscriptionViewModel: ObservableObject {
                 print("Received event - ID: \(event.id)")
             }
             .store(in: &cancellables)
-    }
-    
-    private func createNIP29Group(groupId: String, groupName: String, completion: @escaping (Bool, String?) -> Void) {
-        // Create NIP-29 group using NostrUtils
-        guard NostrManager.shared.isConnected else {
-            completion(false, nil)
-            return
-        }
-        
-        // Build NostrFilter JSON string for about field (just the filter, not REQ format)
-        let filterConfig = buildNostrFilter()
-        let aboutJsonString: String
-        
-        do {
-            // Build REQ format array: ["REQ", subscription_id, filter1, filter2, ...]
-            let subscriptionId = "sub_\(groupId)"
-            var reqArray: [Any] = ["REQ", subscriptionId]
-            
-            if let filters = filterConfig["filters"] as? [[String: Any]] {
-                // If already contains multiple filters, add them all
-                reqArray.append(contentsOf: filters)
-            } else if !filterConfig.isEmpty {
-                // If single filter object, add it
-                reqArray.append(filterConfig)
-            } else {
-                // Empty filter case - add a minimal filter
-                reqArray.append(["kinds": [1]] as [String: Any])
-            }
-            
-            // JSON encode the REQ array to string for about field
-            let jsonData = try JSONSerialization.data(withJSONObject: reqArray, options: [])
-            aboutJsonString = String(data: jsonData, encoding: .utf8) ?? "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
-        } catch {
-            aboutJsonString = "[\"REQ\",\"sub_default\",{\"kinds\":[1]}]"
-        }
-        
-        // NIP-29 group creation event tags
-        let tags: [[String]] = [
-            ["h", groupId],           // Group identifier
-            ["name", groupName],      // Group name
-            ["about", aboutJsonString], // NostrFilter as JSON string
-            ["private"],
-            ["closed"]
-        ]
-        
-        // Publish kind 9007 event (NIP-29 group creation)
-        if let eventId = NostrManager.shared.publishEvent(kind: 9007, content: "Create topic group: \(groupName)", tags: tags) {
-            completion(true, eventId)
-        } else {
-            completion(false, nil)
-        }
     }
     
     // Convert UINostrFilter to NostrFilterConfig

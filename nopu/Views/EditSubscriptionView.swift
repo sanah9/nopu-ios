@@ -308,11 +308,26 @@ struct EditSubscriptionView: View {
             filters: updatedFilters
         )
         
-        // Update subscription
-        subscriptionManager.updateSubscription(updatedSubscription)
+        // First update the Nostr group configuration
+        let aboutJsonString = viewModel.buildAboutJsonString()
         
-        // Close view
-        presentationMode.wrappedValue.dismiss()
+        viewModel.updateGroupConfig(
+            groupId: subscription.groupId,
+            groupName: subscription.topicName,
+            aboutJsonString: aboutJsonString
+        ) { success, eventId in
+            if success {
+                // Then update local subscription
+                DispatchQueue.main.async {
+                    self.subscriptionManager.updateSubscription(updatedSubscription)
+                    // Close view
+                    self.presentationMode.wrappedValue.dismiss()
+                }
+            } else {
+                // Handle error
+                print("Failed to update group configuration")
+            }
+        }
     }
     
     private func kindDescription(_ kind: Int) -> String {
