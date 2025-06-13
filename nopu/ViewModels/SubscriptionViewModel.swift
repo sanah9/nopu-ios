@@ -353,9 +353,11 @@ class SubscriptionViewModel: ObservableObject {
             return
         }
         
-        // Step 2: Set group configuration with kind 9002 event
-        updateGroupConfig(groupId: groupId, groupName: groupName, aboutJsonString: aboutJsonString) { success, eventId in
-            completion(success, eventId)
+        let delay: TimeInterval = 0.3
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.updateGroupConfig(groupId: groupId, groupName: groupName, aboutJsonString: aboutJsonString) { success, eventId in
+                completion(success, eventId)
+            }
         }
     }
     
@@ -496,5 +498,4 @@ class SubscriptionViewModel: ObservableObject {
         unifiedFilter.relays = config.relays
     }
 }
-
 import Combine
