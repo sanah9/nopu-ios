@@ -48,13 +48,10 @@ public class MultiRelayPoolManager: ObservableObject {
             return existingConnection
         }
         
-        // If no relay URLs provided, use default local test relay
-        let actualRelayURLs = relayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : relayURLs
-        
         // Create new server connection
         let connection = ServerConnection(
             serverURL: key,
-            relayURLs: actualRelayURLs
+            relayURLs: relayURLs
         )
         
         // Set connection state change callback
@@ -68,9 +65,6 @@ public class MultiRelayPoolManager: ObservableObject {
                 self?.updateConnectionCounts()
             }
             .store(in: &cancellables)
-        
-        // Setup auto reconnection
-        setupAutoReconnect(for: connection)
         
         serverConnections[key] = connection
         return connection
@@ -165,8 +159,10 @@ public class MultiRelayPoolManager: ObservableObject {
      * Update connection counts
      */
     private func updateConnectionCounts() {
-        totalConnectionCount = serverConnections.count
-        connectedServersCount = serverConnections.values.filter { $0.isConnected }.count
+        DispatchQueue.main.async {
+            self.totalConnectionCount = self.serverConnections.count
+            self.connectedServersCount = self.serverConnections.values.filter { $0.isConnected }.count
+        }
     }
     
     func setEvent20284Handler(_ handler: @escaping (String) -> Void) {
@@ -218,7 +214,26 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     
     public func relayStateDidChange(_ relay: Relay, state: Relay.State) {
         print("Relay state changed - URL: \(relay.url), State: \(state)")
-        updateConnectionStatus(with: relayPool?.relays ?? [])
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            switch state {
+            case .connected:
+                self.connectionState = .connected
+                self.isConnected = true
+            case .connecting:
+                self.connectionState = .connecting
+            case .notConnected:
+                self.connectionState = .disconnected
+                self.isConnected = false
+            case .error:
+                self.connectionState = .disconnected
+                self.isConnected = false
+            }
+            
+            self.updateConnectionStatus(with: self.relayPool?.relays ?? [])
+        }
     }
     
     public func relay(_ relay: Relay, didReceive response: RelayResponse) {
@@ -404,14 +419,26 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         // Create RelayPool
         var relays: [Relay] = []
         for relayURL in relayURLs {
-            if let url = URL(string: relayURL) {
+            // Ensure URL starts with ws:// or wss://
+            var urlString = relayURL
+            if !urlString.hasPrefix("ws://") && !urlString.hasPrefix("wss://") {
+                urlString = "ws://" + urlString.replacingOccurrences(of: "http://", with: "").replacingOccurrences(of: "https://", with: "")
+            }
+            
+            print("Setting up relay with URL: \(urlString)")
+            if let url = URL(string: urlString) {
                 do {
                     let relay = try Relay(url: url)
                     relays.append(relay)
                 } catch {
-                    print("Failed to create relay for \(relayURL): \(error)")
+                    print("Failed to create relay for \(urlString): \(error)")
                 }
             }
+        }
+        
+        if relays.isEmpty {
+            print("Warning: No valid relays created")
+            return
         }
         
         relayPool = RelayPool(relays: Set(relays), delegate: self)
@@ -432,6 +459,11 @@ public class ServerConnection: ObservableObject, RelayDelegate {
      */
     private func updateConnectionStatus(with relays: Set<Relay>) {
         let connectedRelays = relays.filter { $0.state == .connected }
+        let disconnectedOrErrorRelays = relays.filter { 
+            if case .error = $0.state { return true }
+            return $0.state == .notConnected
+        }
+        
         let relayInfos = relays.map { relay in
             RelayInfo(
                 url: relay.url.absoluteString,
@@ -440,33 +472,36 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
         
         let wasConnected = self.isConnected
+        let previousState = self.connectionState
         
         DispatchQueue.main.async {
             self.isConnected = !connectedRelays.isEmpty
             self.activeRelays = relayInfos
             
-            // Update connection state
             let newConnectionState: ConnectionState
-            if connectedRelays.isEmpty && relays.allSatisfy({ $0.state == .notConnected }) {
-                newConnectionState = .disconnected
-            } else if !connectedRelays.isEmpty {
+            let hasErrorState = relays.contains { relay in
+                if case .error = relay.state { return true }
+                return false
+            }
+            
+            if connectedRelays.count > 0 {
                 newConnectionState = .connected
+            } else if disconnectedOrErrorRelays.count == relays.count {
+                newConnectionState = .disconnected
             } else {
                 newConnectionState = .connecting
             }
             
-            let previousState = self.connectionState
             self.connectionState = newConnectionState
+            self.onConnectionStateChanged?()
             
-            // Notify parent manager of connection state change
-            if wasConnected != self.isConnected {
-                self.onConnectionStateChanged?()
+            if !wasConnected && self.isConnected && previousState != .connected && newConnectionState == .connected {
+                self.processPendingSubscriptions()
             }
             
-            // If just connected successfully, process pending subscriptions
-            if !wasConnected && self.isConnected && previousState != .connected && newConnectionState == .connected {
-                print("Connection established to \(self.serverURL), processing pending subscriptions...")
-                self.processPendingSubscriptions()
+            if (newConnectionState == .disconnected && hasErrorState) || 
+               (newConnectionState == .disconnected && previousState == .connecting) {
+                self.handleReconnection()
             }
         }
     }
@@ -503,6 +538,25 @@ public class ServerConnection: ObservableObject, RelayDelegate {
             until: until,
             limit: limit
         )
+    }
+    
+    // Add new method for handling reconnection
+    private func handleReconnection() {
+        guard shouldAutoReconnect else { return }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            guard let self = self else { return }
+            
+            if self.connectionState == .disconnected && self.shouldAutoReconnect {
+                self.relayPool?.disconnect()
+                self.relayPool = nil
+                self.setupRelayPool()
+                
+                if self.relayPool != nil {
+                    self.connect()
+                }
+            }
+        }
     }
 }
 
