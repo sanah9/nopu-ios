@@ -391,10 +391,13 @@ class SubscriptionManager: ObservableObject {
             return "Message was reposted"
         case 9735:
             // Zap
-            if let PTag = eventProcessor.getTagValue(from: eventContent, tagName: "P"),
+            if let pTag = eventProcessor.getTagValue(from: eventContent, tagName: "p"),
                let bolt11 = eventProcessor.getTagValue(from: eventContent, tagName: "bolt11") {
                 let amount = eventProcessor.parseBolt11Amount(bolt11) ?? 0
-                return "\(PTag.prefix(8)) sent a Zap of \(amount) sats"
+                if let PTag = eventProcessor.getTagValue(from: eventContent, tagName: "P") {
+                    return "\(PTag.prefix(8)) sent \(amount) sats to \(pTag.prefix(8))"
+                }
+                return "\(pTag.prefix(8)) received \(amount) sats"
             }
             return "Received a Zap"
         default:
