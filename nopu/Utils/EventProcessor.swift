@@ -46,4 +46,52 @@ class EventProcessor {
         }
         return kind
     }
+    
+    // Get tag value by name
+    func getTagValue(from eventContent: String, tagName: String) -> String? {
+        guard let data = eventContent.data(using: .utf8),
+              let eventData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tags = eventData["tags"] as? [[String]] else {
+            return nil
+        }
+        
+        for tag in tags {
+            if tag.count >= 2 && tag[0] == tagName {
+                return tag[1]
+            }
+        }
+        return nil
+    }
+    
+    // Get event content
+    func getEventContent(from eventContent: String) -> String? {
+        guard let data = eventContent.data(using: .utf8),
+              let eventData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = eventData["content"] as? String else {
+            return nil
+        }
+        return content
+    }
+    
+    // Get event publisher's public key
+    func getEventPubkey(from eventContent: String) -> String? {
+        guard let data = eventContent.data(using: .utf8),
+              let eventData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let pubkey = eventData["pubkey"] as? String else {
+            return nil
+        }
+        return pubkey
+    }
+    
+    // Parse amount from bolt11 string (simple implementation, might need more complex parsing)
+    func parseBolt11Amount(_ bolt11: String) -> Int? {
+        // Need to implement complete bolt11 parsing
+        // This is just a simple implementation, should use a dedicated Lightning library in production
+        guard let data = bolt11.data(using: .utf8),
+              let decoded = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let amount = decoded["amount"] as? Int else {
+            return nil
+        }
+        return amount
+    }
 } 

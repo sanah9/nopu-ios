@@ -351,18 +351,52 @@ class SubscriptionManager: ObservableObject {
     }
     
     // Get notification message based on event kind
-    private func getNotificationMessage(for eventKind: Int) -> String {
+    private func getNotificationMessage(for eventKind: Int, eventContent: String) -> String {
         switch eventKind {
         case 1:
-            return "Received a new note"
+            // Check if it's a reply or quote repost
+            if eventProcessor.getTagValue(from: eventContent, tagName: "p") != nil {
+                if eventProcessor.getTagValue(from: eventContent, tagName: "q") != nil {
+                    // Quote repost
+                    let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
+                    return "Quote reposted your message: \(content)"
+                } else {
+                    // Reply
+                    let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
+                    return "Replied to your message: \(content)"
+                }
+            } else {
+                // Regular text message
+                let content = eventProcessor.getEventContent(from: eventContent) ?? "No content"
+                return "New message: \(content)"
+            }
         case 7:
-            return "Received a like message"
+            // Like
+            if let pubkey = eventProcessor.getEventPubkey(from: eventContent),
+               let content = eventProcessor.getEventContent(from: eventContent) {
+                return "\(pubkey.prefix(8)) liked message: \(content)"
+            }
+            return "Received a like"
         case 1059:
+            // Direct message
+            if let pTag = eventProcessor.getTagValue(from: eventContent, tagName: "p") {
+                return "Received DM from \(pTag.prefix(8))"
+            }
             return "Received a direct message"
         case 6:
-            return "Received a repost message"
+            // Repost
+            if let pubkey = eventProcessor.getEventPubkey(from: eventContent) {
+                return "\(pubkey.prefix(8)) reposted your message"
+            }
+            return "Message was reposted"
         case 9735:
-            return "Received a zap message"
+            // Zap
+            if let PTag = eventProcessor.getTagValue(from: eventContent, tagName: "P"),
+               let bolt11 = eventProcessor.getTagValue(from: eventContent, tagName: "bolt11") {
+                let amount = eventProcessor.parseBolt11Amount(bolt11) ?? 0
+                return "\(PTag.prefix(8)) sent a Zap of \(amount) sats"
+            }
+            return "Received a Zap"
         default:
             return "Received a new notification"
         }
@@ -383,7 +417,7 @@ class SubscriptionManager: ObservableObject {
         
         // Create notification
         let notification = NotificationItem(
-            message: getNotificationMessage(for: eventProcessor.getEventKind(from: eventContent)),
+            message: getNotificationMessage(for: eventProcessor.getEventKind(from: eventContent), eventContent: eventContent),
             type: .general,
             eventJSON: eventContent,
             authorPubkey: nil,
