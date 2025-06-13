@@ -37,4 +37,13 @@ class EventProcessor {
         
         return (groupId, content)
     }
+    
+    func getEventKind(from eventContent: String) -> Int {
+        guard let data = eventContent.data(using: .utf8),
+              let eventData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let kind = eventData["kind"] as? Int else {
+            return 1 // Default to kind 1, which represents a text note
+        }
+        return kind
+    }
 } 

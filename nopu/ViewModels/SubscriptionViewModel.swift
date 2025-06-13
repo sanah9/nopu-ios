@@ -49,13 +49,6 @@ class SubscriptionViewModel: ObservableObject {
     }
     
     init() {
-        // Default configuration
-        // Add some common event kinds
-        unifiedFilter.kinds = [1, 7, 6, 9735] // Text Notes, Likes, Reposts, Zaps
-        
-        // Add default relay
-        unifiedFilter.relays = ["ws://127.0.0.1:8080"]
-        
         // Set up observers for basic options changes
         setupObservers()
     }

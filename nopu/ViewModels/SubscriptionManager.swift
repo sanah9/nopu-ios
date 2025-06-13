@@ -124,34 +124,37 @@ class SubscriptionManager: ObservableObject {
     // Setup auto connections and subscriptions
     private func setupAutoConnections() {
         guard isAutoConnectEnabled else { return }
-        
-        for group in serverGroups {
-            // Get relay URLs from subscriptions
-            let relayURLs = group.subscriptions.flatMap { $0.filters.relays }
-            let uniqueRelayURLs = Array(Set(relayURLs))
-            
-            // Create or get server connection
+
+        // ⚠️ Iterate through each subscription individually, instead of by ServerGroup
+        for subscription in subscriptions {
+            let serverURL = subscription.serverURL.isEmpty ? "default" : subscription.serverURL
+            let relayURLs = subscription.filters.relays
+
+            // Create or reuse ServerConnection
             let serverConnection = multiRelayManager.getOrCreateServerConnection(
-                serverURL: group.serverURL,
-                relayURLs: uniqueRelayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : uniqueRelayURLs
+                serverURL: serverURL,
+                relayURLs: relayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : relayURLs
             )
-            
+
             if serverConnection.connectionState == .disconnected {
                 serverConnection.connect()
             }
-            
-            // Create subscription for each group
-            let subscriptionId = "sub_\(group.serverURL)_\(UUID().uuidString.prefix(8))"
-            let filter = group.generateFilterDict()
-            
-            // Execute subscription
-            let _ = multiRelayManager.subscribe(
-                serverURL: group.serverURL,
+
+            // Use stable and predictable subscriptionId for easier unsubscribe later
+            let subscriptionId = "sub_\(subscription.groupId)"
+
+            // Build filter to only subscribe to the current subscription's groupId
+            let filter: [String: Any] = [
+                "kinds": [20284],
+                "#h": [subscription.groupId],
+                "since": Int(Date().timeIntervalSince1970 - 3600)
+            ]
+
+            _ = multiRelayManager.subscribe(
+                serverURL: serverURL,
                 subscriptionId: subscriptionId,
                 filter: filter
             )
-            
-    
         }
     }
     
@@ -380,12 +383,12 @@ class SubscriptionManager: ObservableObject {
         
         // Create notification
         let notification = NotificationItem(
-            message: getNotificationMessage(for: 20284),
+            message: getNotificationMessage(for: eventProcessor.getEventKind(from: eventContent)),
             type: .general,
             eventJSON: eventContent,
             authorPubkey: nil,
             eventId: nil,
-            eventKind: 20284,
+            eventKind: eventProcessor.getEventKind(from: eventContent),
             eventCreatedAt: Date()
         )
         
