@@ -194,6 +194,12 @@ class SubscriptionManager: ObservableObject {
     }
     
     func updateSubscription(_ subscription: Subscription) {
+        // Cancel all old connections for this subscription
+        let serverURL = subscription.serverURL.isEmpty ? "default" : subscription.serverURL
+        let oldSubscriptionId = "sub_\(subscription.groupId)"
+        multiRelayManager.unsubscribe(serverURL: serverURL, subscriptionId: oldSubscriptionId)
+        
+        // Update subscription in database and memory
         databaseManager.updateSubscription(subscription)
         loadSubscriptions() // Reload to update UI
         updateServerGroups() // Update groups
@@ -201,7 +207,7 @@ class SubscriptionManager: ObservableObject {
         // Update NostrManager relays
         reconfigureNostrManagerRelays()
         
-        // Reset connections
+        // Reset connections and create new subscription
         if isAutoConnectEnabled {
             setupAutoConnections()
         }
