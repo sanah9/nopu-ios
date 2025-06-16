@@ -48,19 +48,6 @@ struct ConnectionStatusView: View {
                         }
                     }
                 }
-                
-                // Control buttons
-                Section("Controls") {
-                    Button("Reconnect All") {
-                        subscriptionManager.reconnectAllServers()
-                    }
-                    .foregroundColor(.blue)
-                    
-                    Button("Disconnect All") {
-                        subscriptionManager.disconnectAllServers()
-                    }
-                    .foregroundColor(.red)
-                }
             }
             .navigationTitle("Connection Status")
             .refreshable {
