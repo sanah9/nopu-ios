@@ -35,7 +35,7 @@ struct NotificationMessageBuilder {
             }
             return "Message was reposted"
         case 9735:
-            if let p = tagValue("p"), let bolt11 = tagValue("bolt11") {
+            if let _ = tagValue("p"), let bolt11 = tagValue("bolt11") {
                 let sats = EventProcessor.shared.parseBolt11Amount(bolt11) ?? 0
                 return "Received \(sats) sats via Zap"
             }

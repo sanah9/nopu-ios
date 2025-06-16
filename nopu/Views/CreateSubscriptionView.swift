@@ -29,15 +29,27 @@ struct CreateSubscriptionView: View {
                         .disableAutocorrection(true)
                 }
                 
-                DisclosureGroup("Use another push server", isExpanded: $viewModel.useAnotherServer) {
+                DisclosureGroup(isExpanded: $viewModel.useAnotherServer) {
                     TextField("Push server URL, e.g. https://nopu.sh", text: $viewModel.serverURL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
+                } label: {
+                    HStack {
+                        Text("Use another push server")
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation {
+                            viewModel.useAnotherServer.toggle()
+                        }
+                    }
                 }
                 
                 // Basic Push Options
-                DisclosureGroup("Use basic push options", isExpanded: $viewModel.enableBasicOptions) {
+                DisclosureGroup(isExpanded: $viewModel.enableBasicOptions) {
                     Section("User Public Key") {
                         TextField("Enter your public key (npub or hex format)", text: $viewModel.userPubkey)
                             .font(.system(.caption, design: .monospaced))
@@ -84,10 +96,22 @@ struct CreateSubscriptionView: View {
                             isOn: $viewModel.notifyOnDMs
                         )
                     }
-                } // End of "Use basic push options" DisclosureGroup
+                } label: {
+                    HStack {
+                        Text("Use basic push options")
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation {
+                            viewModel.enableBasicOptions.toggle()
+                        }
+                    }
+                }
                 
                 // Advanced Filters
-                DisclosureGroup("Use advanced filters", isExpanded: $viewModel.useAdvancedFilters) {
+                DisclosureGroup(isExpanded: $viewModel.useAdvancedFilters) {
                     // Event IDs
                     Section("Event IDs") {
                         ForEach(viewModel.unifiedFilter.eventIds.indices, id: \.self) { index in
@@ -255,8 +279,21 @@ struct CreateSubscriptionView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                } label: {
+                    HStack {
+                        Text("Use advanced filters")
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation {
+                            viewModel.useAdvancedFilters.toggle()
+                        }
+                    }
                 }
             }
+            .simultaneousGesture(TapGesture().onEnded { UIApplication.shared.endEditing() })
             .navigationTitle("Add subscription")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
@@ -281,4 +318,13 @@ struct CreateSubscriptionView: View {
         }
     }
 
+}
+
+// MARK: - Resign First Responder Helper
+
+extension UIApplication {
+    /// Helper method to resign the current first responder and dismiss the keyboard.
+    func endEditing() {
+        sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 } 

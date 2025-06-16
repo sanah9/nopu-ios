@@ -32,7 +32,7 @@ struct NotificationView: View {
                                 .padding(.horizontal, 32)
                             
                             VStack(spacing: 8) {
-                                Text("Click the + to create or subscribe to a topic")
+                                Text("Click the + to create a topic")
                                     .font(.system(size: 15))
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
