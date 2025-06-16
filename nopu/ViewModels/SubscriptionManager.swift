@@ -79,7 +79,7 @@ class SubscriptionManager: ObservableObject {
         
         // If no relay URLs found, use default
         if allRelayURLs.isEmpty {
-            allRelayURLs.insert("ws://127.0.0.1:8080")
+            allRelayURLs.insert("ws://nopu.sh")
         }
         
         // Add collected relay URLs to NostrManager
@@ -133,7 +133,7 @@ class SubscriptionManager: ObservableObject {
             // Create or reuse ServerConnection
             let serverConnection = multiRelayManager.getOrCreateServerConnection(
                 serverURL: serverURL,
-                relayURLs: relayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : relayURLs
+                relayURLs: relayURLs.isEmpty ? ["ws://nopu.sh"] : relayURLs
             )
 
             if serverConnection.connectionState == .disconnected {
@@ -278,7 +278,7 @@ class SubscriptionManager: ObservableObject {
         // Create or get server connection
         let serverConnection = multiRelayManager.getOrCreateServerConnection(
             serverURL: serverURL,
-            relayURLs: relayURLs.isEmpty ? ["ws://127.0.0.1:8080"] : relayURLs
+            relayURLs: relayURLs.isEmpty ? ["ws://nopu.sh"] : relayURLs
         )
         
         if serverConnection.connectionState == .disconnected {
