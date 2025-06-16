@@ -28,9 +28,6 @@ struct NotificationMessageBuilder {
             }
             return "Received a like"
         case 1059:
-            if let p = tagValue("p") {
-                return "Received a DM from \(p.prefix(8))"
-            }
             return "Received a direct message"
         case 6:
             if let pubkey = eventData["pubkey"] as? String {
@@ -40,7 +37,7 @@ struct NotificationMessageBuilder {
         case 9735:
             if let p = tagValue("p"), let bolt11 = tagValue("bolt11") {
                 let sats = EventProcessor.shared.parseBolt11Amount(bolt11) ?? 0
-                return "\(p.prefix(8)) paid \(sats) sats via Zap"
+                return "Received \(sats) sats via Zap"
             }
             return "Received a Zap"
         default:
