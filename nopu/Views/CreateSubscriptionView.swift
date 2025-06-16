@@ -19,6 +19,8 @@ struct CreateSubscriptionView: View {
     @State private var newTagKey = ""
     @State private var newTagValue = ""
     @State private var newRelay = ""
+    // Focus state to automatically focus Topic TextField on appear
+    @FocusState private var topicNameFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -26,6 +28,7 @@ struct CreateSubscriptionView: View {
                 // Basic Settings
                 Section("Basic Settings") {
                     TextField("Topic name, e.g. nopu_alerts", text: $viewModel.topicName)
+                        .focused($topicNameFocused)
                         .disableAutocorrection(true)
                 }
                 
@@ -313,6 +316,13 @@ struct CreateSubscriptionView: View {
                         }
                     }
                     .disabled(viewModel.topicName.isEmpty)
+                }
+            }
+            // Automatically focus the Topic TextField when the view appears
+            .onAppear {
+                // Slight delay ensures the field is available for focus
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    topicNameFocused = true
                 }
             }
         }
