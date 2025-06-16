@@ -33,7 +33,7 @@ struct CreateSubscriptionView: View {
                 }
                 
                 DisclosureGroup(isExpanded: $viewModel.useAnotherServer) {
-                    TextField("Push server URL, e.g. https://nopu.sh", text: $viewModel.serverURL)
+                    TextField("Push server URL, e.g. ws://nopu.sh", text: $viewModel.serverURL)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)

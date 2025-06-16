@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var selectedServer = "nopu.sh"
+    @State private var selectedServer = "ws://nopu.sh"
     @State private var showingCustomServerInput = false
     @State private var customServerURL = ""
     
-    private let defaultServer = "nopu.sh"
+    private let defaultServer = "ws://nopu.sh"
     
     var body: some View {
         NavigationView {
@@ -74,7 +74,7 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {
                     customServerURL = ""
                 }
-                Button("Reset to nopu.sh", role: .destructive) {
+                Button("Reset to ws://nopu.sh", role: .destructive) {
                     selectedServer = defaultServer
                     customServerURL = ""
                 }
@@ -84,8 +84,8 @@ struct SettingsView: View {
                         var serverURL = customServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
                         
                         // Add https:// by default if user didn't input protocol
-                        if !serverURL.hasPrefix("http://") && !serverURL.hasPrefix("https://") {
-                            serverURL = "https://" + serverURL
+                        if !serverURL.hasPrefix("ws://") && !serverURL.hasPrefix("wss://") {
+                            serverURL = "ws://" + serverURL
                         }
                         
                         // Remove trailing slash
@@ -99,7 +99,7 @@ struct SettingsView: View {
                 }
                 .disabled(customServerURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } message: {
-                Text("Enter the URL of your server (e.g., nopu.sh or https://my-server.com)")
+                Text("Enter the URL of your server (e.g., ws://nopu.sh or wss://my-server.com)")
             }
         }
     }
