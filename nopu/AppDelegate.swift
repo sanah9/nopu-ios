@@ -2,7 +2,6 @@ import UIKit
 import UserNotifications
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    private let eventProcessor = EventProcessor.shared
     private let databaseManager = DatabaseManager.shared
 
     // MARK: - UIApplicationDelegate
@@ -56,39 +55,61 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
     // MARK: - Private helpers
     private func handlePushPayload(_ userInfo: [AnyHashable: Any]) {
-        guard let eventString = userInfo["event"] as? String else { return }
-        // Example event string: "20284|{...json...}"
-        guard let pipeIndex = eventString.firstIndex(of: "|") else { return }
-        let idPart = String(eventString[..<pipeIndex])
-        guard let eventId = Int(idPart) else { return }
+        // Event payload missing or invalid; ignore
 
+        // Accept event as Dictionary or JSON String
+        var eventDict: [String: Any]?
+        if let dict = userInfo["event"] as? [String: Any] {
+            eventDict = dict
+        } else if let jsonString = userInfo["event"] as? String,
+                  let jsonData = jsonString.data(using: .utf8),
+                  let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+            eventDict = parsed
+        }
+
+        guard let eventDict = eventDict else {
+            return
+        }
+        let eventId = eventDict["kind"] as? Int ?? 0
         switch eventId {
         case 20284:
-            processEvent20284(fullEventString: eventString)
+            processEvent20284(dict: eventDict)
         default:
-            print("Unhandled event id: \(eventId)")
+            print("Unhandled event id (dict): \(eventId)")
         }
     }
 
-    private func processEvent20284(fullEventString: String) {
-        guard let (groupId, eventContent) = eventProcessor.processEvent20284(fullEventString) else { return }
+    private func processEvent20284(dict eventDict: [String: Any]) {
+        // Parse groupId from "h" tag
+        guard let tags = eventDict["tags"] as? [[String]] else { return }
+        var groupId: String?
+        for tag in tags {
+            if tag.count >= 2 && tag[0] == "h" {
+                groupId = tag[1]
+                break
+            }
+        }
+        guard let groupId = groupId else { return }
+
+        // Inner event content
+        guard let eventContent = eventDict["content"] as? String else { return }
         guard let contentData = eventContent.data(using: .utf8),
-              let eventDict = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] else { return }
-        let kind = eventDict["kind"] as? Int ?? 1
-        let message = NotificationMessageBuilder.message(for: kind, eventData: eventDict)
+              let innerEventDict = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] else { return }
+        let kind = innerEventDict["kind"] as? Int ?? 1
+        let message = NotificationMessageBuilder.message(for: kind, eventData: innerEventDict)
 
         let item = NotificationItem(
             message: message,
             type: .general,
             eventJSON: eventContent,
             relayURL: nil,
-            authorPubkey: eventDict["pubkey"] as? String,
-            eventId: eventDict["id"] as? String,
+            authorPubkey: innerEventDict["pubkey"] as? String,
+            eventId: innerEventDict["id"] as? String,
             eventKind: kind,
             eventCreatedAt: Date()
         )
 
-        // Append notification to subscriptions matching the groupId
+        // Append to existing subscriptions matching the groupId
         let subscriptions = databaseManager.fetchSubscriptions().filter { $0.groupId == groupId }
         for sub in subscriptions {
             if let subId = sub.id {
