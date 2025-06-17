@@ -76,19 +76,19 @@ struct CreateSubscriptionView: View {
                         )
                     }
                     
-                    Section("Social Notifications") {
-                        NotificationToggle(
-                            title: "Following posts",
-                            subtitle: "Notify when people you follow post new notes",
-                            isOn: $viewModel.notifyOnFollowsPosts
-                        )
+                    // Section("Social Notifications") {
+                    //     NotificationToggle(
+                    //         title: "Following posts",
+                    //         subtitle: "Notify when people you follow post new notes",
+                    //         isOn: $viewModel.notifyOnFollowsPosts
+                    //     )
                         
-                        NotificationToggle(
-                            title: "Direct messages",
-                            subtitle: "Notify when you receive direct messages",
-                            isOn: $viewModel.notifyOnDMs
-                        )
-                    }
+                    //     NotificationToggle(
+                    //         title: "Direct messages",
+                    //         subtitle: "Notify when you receive direct messages",
+                    //         isOn: $viewModel.notifyOnDMs
+                    //     )
+                    // }
                 } label: {
                     HStack {
                         Text("Basic push options")
@@ -230,48 +230,48 @@ struct CreateSubscriptionView: View {
                     }
                     
                     // Relay Servers
-                    Section("Relay Servers") {
-                        ForEach(viewModel.unifiedFilter.relays.indices, id: \.self) { index in
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(viewModel.unifiedFilter.relays[index])
-                                            .font(.system(.body, design: .monospaced))
-                                        Text("Relay #\(index + 1)")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Button("Remove") {
-                                        viewModel.unifiedFilter.relays.remove(at: index)
-                                    }
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                                    .buttonStyle(BorderlessButtonStyle())
-                                }
-                            }
-                        }
+                    // Section("Relay Servers") {
+                    //     ForEach(viewModel.unifiedFilter.relays.indices, id: \.self) { index in
+                    //         VStack(alignment: .leading, spacing: 2) {
+                    //             HStack {
+                    //                 VStack(alignment: .leading, spacing: 2) {
+                    //                     Text(viewModel.unifiedFilter.relays[index])
+                    //                         .font(.system(.body, design: .monospaced))
+                    //                     Text("Relay #\(index + 1)")
+                    //                         .font(.caption2)
+                    //                         .foregroundColor(.secondary)
+                    //                 }
+                    //                 Spacer()
+                    //                 Button("Remove") {
+                    //                     viewModel.unifiedFilter.relays.remove(at: index)
+                    //                 }
+                    //                 .foregroundColor(.red)
+                    //                 .font(.caption)
+                    //                 .buttonStyle(BorderlessButtonStyle())
+                    //             }
+                    //         }
+                    //     }
                         
-                        HStack {
-                            TextField("e.g. wss://relay.damus.io", text: $newRelay)
-                                .keyboardType(.URL)
-                                .autocapitalization(.none)
-                                .disableAutocorrection(true)
-                            Button("Add") {
-                                if !newRelay.isEmpty && viewModel.isValidWebSocketURL(newRelay) {
-                                    viewModel.unifiedFilter.relays.append(newRelay)
-                                    newRelay = ""
-                                }
-                            }
-                            .disabled(newRelay.isEmpty || !viewModel.isValidWebSocketURL(newRelay))
-                        }
+                    //     HStack {
+                    //         TextField("e.g. wss://relay.damus.io", text: $newRelay)
+                    //             .keyboardType(.URL)
+                    //             .autocapitalization(.none)
+                    //             .disableAutocorrection(true)
+                    //         Button("Add") {
+                    //             if !newRelay.isEmpty && viewModel.isValidWebSocketURL(newRelay) {
+                    //                 viewModel.unifiedFilter.relays.append(newRelay)
+                    //                 newRelay = ""
+                    //             }
+                    //         }
+                    //         .disabled(newRelay.isEmpty || !viewModel.isValidWebSocketURL(newRelay))
+                    //     }
                         
-                        if viewModel.unifiedFilter.relays.isEmpty {
-                            Text("Default server will be used when no relays are specified")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    //     if viewModel.unifiedFilter.relays.isEmpty {
+                    //         Text("Default server will be used when no relays are specified")
+                    //             .font(.caption)
+                    //             .foregroundColor(.secondary)
+                    //     }
+                    // }
                 } label: {
                     HStack {
                         Text("Advanced filters")
