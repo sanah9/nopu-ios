@@ -612,7 +612,8 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
 
         do {
-            let relayTag = Tag(name: "relay", value: relay.url.absoluteString, otherParameters: [])
+            let relayURLString = relay.url.absoluteString == "ws://nopu.sh" ? "wss://nopu.sh" : relay.url.absoluteString
+            let relayTag = Tag(name: "relay", value: relayURLString, otherParameters: [])
             let challengeTag = Tag(name: "challenge", value: challenge, otherParameters: [])
 
             let authEvent = try NostrEvent(
