@@ -91,7 +91,7 @@ struct CreateSubscriptionView: View {
                     // }
                 } label: {
                     HStack {
-                        Text("Basic push options")
+                        Text("Basic options")
                         Spacer()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,7 +274,7 @@ struct CreateSubscriptionView: View {
                     // }
                 } label: {
                     HStack {
-                        Text("Advanced filters")
+                        Text("Advanced options")
                         Spacer()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
