@@ -21,6 +21,8 @@ struct CreateSubscriptionView: View {
     @State private var newRelay = ""
     // Focus state to automatically focus Topic TextField on appear
     @FocusState private var topicNameFocused: Bool
+    @State private var showErrorAlert = false
+    @State private var errorMessage = "Subscription failed. Please ensure you are connected to at least one relay server."
     
     var body: some View {
         NavigationView {
@@ -312,11 +314,18 @@ struct CreateSubscriptionView: View {
                         viewModel.createSubscriptionWithGroup(subscriptionManager: subscriptionManager) { success in
                             if success {
                                 presentationMode.wrappedValue.dismiss()
+                            } else {
+                                showErrorAlert = true
                             }
                         }
                     }
                     .disabled(viewModel.topicName.isEmpty)
                 }
+            }
+            .alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
             }
             // Automatically focus the Topic TextField when the view appears
             .onAppear {

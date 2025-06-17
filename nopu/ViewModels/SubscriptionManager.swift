@@ -77,10 +77,10 @@ class SubscriptionManager: ObservableObject {
             }
         }
         
-        // If no relay URLs found, use default
-        if allRelayURLs.isEmpty {
-            allRelayURLs.insert("ws://nopu.sh")
-        }
+        // // If no relay URLs found, use default
+        // if allRelayURLs.isEmpty {
+        //     allRelayURLs.insert("ws://nopu.sh")
+        // }
         
         // Add collected relay URLs to NostrManager
         for relayURL in allRelayURLs {
