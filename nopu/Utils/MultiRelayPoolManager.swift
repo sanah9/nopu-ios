@@ -247,6 +247,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
             print("Subscription completed - ID: \(subscriptionId)")
         case .auth(let challenge):
             print("Authentication required - challenge: \(challenge)")
+            respondToAuthChallenge(relay: relay, challenge: challenge)
         case .ok(let eventId, let success, let message):
             if !success {
                 print("Event publish failed - ID: \(eventId), Reason: \(message)")
@@ -588,6 +589,64 @@ public class ServerConnection: ObservableObject, RelayDelegate {
                     self.connect()
                 }
             }
+        }
+    }
+    
+    // MARK: - NIP-42 Authentication Handling
+    
+    /// Responds to NIP-42 auth challenge by publishing a kind 22242 event signed with the current user's keypair.
+    /// - Parameters:
+    ///   - relay: The relay requesting authentication.
+    ///   - challenge: The challenge string provided by the relay.
+    private func respondToAuthChallenge(relay: Relay, challenge: String) {
+        guard let relayPool = relayPool else {
+            print("[Auth] Relay pool not initialized – cannot respond to challenge")
+            return
+        }
+
+        // Obtain user's private key from NostrManager
+        guard let privateKeyHex = NostrManager.shared.getPrivateKey(),
+              let keypair = Keypair(hex: privateKeyHex) else {
+            print("[Auth] No keypair available – cannot sign auth event")
+            return
+        }
+
+        do {
+            let relayTag = Tag(name: "relay", value: relay.url.absoluteString, otherParameters: [])
+            let challengeTag = Tag(name: "challenge", value: challenge, otherParameters: [])
+
+            let authEvent = try NostrEvent(
+                kind: EventKind(rawValue: 22242),
+                content: "",
+                tags: [relayTag, challengeTag],
+                signedBy: keypair
+            )
+
+            let serializedTags = authEvent.tags.map { tag -> [String] in
+                var arr = [tag.name, tag.value]
+                arr.append(contentsOf: tag.otherParameters)
+                return arr
+            }
+
+            let authEventDict: [String: Any] = [
+                "id": authEvent.id,
+                "pubkey": authEvent.pubkey,
+                "created_at": Int(authEvent.createdAt),
+                "kind": Int(authEvent.kind.rawValue),
+                "tags": serializedTags,
+                "content": authEvent.content,
+                "sig": authEvent.signature!
+            ]
+
+            let authMessage: [Any] = ["AUTH", authEventDict]
+            let jsonData = try JSONSerialization.data(withJSONObject: authMessage, options: [])
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                relayPool.send(request: jsonString)
+            }
+
+            print("[Auth] Sent AUTH event (22242) to relay \(relay.url), auth string: \(authMessage)")
+        } catch {
+            print("[Auth] Failed to create/send AUTH event: \(error.localizedDescription)")
         }
     }
 }
