@@ -390,6 +390,15 @@ class SubscriptionViewModel: ObservableObject {
         // Generate a unique group ID
         let groupId = UUID().uuidString.lowercased()
         
+        // Ensure NostrManager has at least one relay and is connected BEFORE creating events
+        if !NostrManager.shared.isConnected {
+            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
+            if NostrManager.shared.isValidWebSocketURL(defaultRelay) {
+                NostrManager.shared.addRelay(url: defaultRelay)
+            }
+            NostrManager.shared.connectIfRelaysAvailable()
+        }
+        
         // Build about JSON string first
         let aboutJsonString = buildAboutJsonString()
         
@@ -404,10 +413,15 @@ class SubscriptionViewModel: ObservableObject {
                     
                     // Create subscription with filter configuration
                     let filters = self.convertUIFilterToNostrFilterConfig()
+                    
+                    // Determine which server URL to use
+                    let defaultServerURL = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
+                    let chosenServerURL = self.useAnotherServer ? self.serverURL : defaultServerURL
+
                     let subscription = Subscription(
                         topicName: self.topicName,
                         groupId: groupId,
-                        serverURL: self.useAnotherServer ? self.serverURL : "",
+                        serverURL: chosenServerURL,
                         filters: filters
                     )
                     subscriptionManager.addSubscription(subscription)

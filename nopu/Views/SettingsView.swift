@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var selectedServer = "ws://nopu.sh"
+    @AppStorage("defaultServerURL") private var selectedServer: String = "ws://nopu.sh"
     @State private var showingCustomServerInput = false
     @State private var customServerURL = ""
     

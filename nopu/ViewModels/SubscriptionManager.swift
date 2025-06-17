@@ -77,10 +77,11 @@ class SubscriptionManager: ObservableObject {
             }
         }
         
-        // // If no relay URLs found, use default
-        // if allRelayURLs.isEmpty {
-        //     allRelayURLs.insert("ws://nopu.sh")
-        // }
+        // If no relay URLs found, fallback to the built-in default relay
+        if allRelayURLs.isEmpty {
+            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
+            allRelayURLs.insert(defaultRelay)
+        }
         
         // Add collected relay URLs to NostrManager
         for relayURL in allRelayURLs {
@@ -131,9 +132,10 @@ class SubscriptionManager: ObservableObject {
             let relayURLs = subscription.filters.relays
 
             // Create or reuse ServerConnection
+            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
             let serverConnection = multiRelayManager.getOrCreateServerConnection(
                 serverURL: serverURL,
-                relayURLs: relayURLs.isEmpty ? ["ws://nopu.sh"] : relayURLs
+                relayURLs: relayURLs.isEmpty ? [defaultRelay] : relayURLs
             )
 
             if serverConnection.connectionState == .disconnected {
@@ -276,9 +278,10 @@ class SubscriptionManager: ObservableObject {
         let relayURLs = subscription.filters.relays
         
         // Create or get server connection
+        let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
         let serverConnection = multiRelayManager.getOrCreateServerConnection(
             serverURL: serverURL,
-            relayURLs: relayURLs.isEmpty ? ["ws://nopu.sh"] : relayURLs
+            relayURLs: relayURLs.isEmpty ? [defaultRelay] : relayURLs
         )
         
         if serverConnection.connectionState == .disconnected {
