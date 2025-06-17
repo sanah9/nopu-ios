@@ -27,6 +27,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Load previously saved device token (if any) into memory
         _ = PushTokenManager.shared // initialize
 
+        // set badge number to 0
+        UIApplication.shared.applicationIconBadgeNumber = 0
+
         return true
     }
 
@@ -121,7 +124,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // Save device token when successfully registered
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenString = deviceToken.map { String(format: "%02x", $0) }.joined()
-        PushTokenManager.shared.token = tokenString
-        print("APNs device token: \(tokenString)")
+
+        // Update only if the token has changed to avoid redundant UserDefaults writes
+        if PushTokenManager.shared.token != tokenString {
+            PushTokenManager.shared.token = tokenString
+            print("[Push] Saved new APNs device token: \(tokenString)")
+        } else {
+            print("[Push] APNs device token unchanged")
+        }
     }
 } 
