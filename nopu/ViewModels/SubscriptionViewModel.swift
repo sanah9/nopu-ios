@@ -392,7 +392,7 @@ class SubscriptionViewModel: ObservableObject {
         
         // Ensure NostrManager has at least one relay and is connected BEFORE creating events
         if !NostrManager.shared.isConnected {
-            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
+            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? AppConfig.defaultServerURL
             if NostrManager.shared.isValidWebSocketURL(defaultRelay) {
                 NostrManager.shared.addRelay(url: defaultRelay)
             }
@@ -402,35 +402,51 @@ class SubscriptionViewModel: ObservableObject {
         // Build about JSON string first
         let aboutJsonString = buildAboutJsonString()
         
-        // Create NIP-29 group creation event (kind 9007)
-        createNIP29Group(groupId: groupId, groupName: topicName, aboutJsonString: aboutJsonString) { [weak self] success, eventId in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                
-                if success {
-                    // Fetch events with kind 20284 and h tag = groupId
-                    self.fetchGroupEvents(groupId: groupId)
-                    
-                    // Create subscription with filter configuration
-                    let filters = self.convertUIFilterToNostrFilterConfig()
-                    
-                    // Determine which server URL to use
-                    let defaultServerURL = UserDefaults.standard.string(forKey: "defaultServerURL") ?? "ws://nopu.sh"
-                    let chosenServerURL = self.useAnotherServer ? self.serverURL : defaultServerURL
+        // Closure to perform group creation once connected
+        let performCreation: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            
+            self.createNIP29Group(groupId: groupId, groupName: self.topicName, aboutJsonString: aboutJsonString) { [weak self] success, eventId in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if success {
+                        // Fetch events with kind 20284 and h tag = groupId
+                        self.fetchGroupEvents(groupId: groupId)
+                        
+                        // Create subscription with filter configuration
+                        let filters = self.convertUIFilterToNostrFilterConfig()
+                        
+                        // Determine which server URL to use
+                        let defaultServerURL = UserDefaults.standard.string(forKey: "defaultServerURL") ?? AppConfig.defaultServerURL
+                        let chosenServerURL = self.useAnotherServer ? self.serverURL : defaultServerURL
 
-                    let subscription = Subscription(
-                        topicName: self.topicName,
-                        groupId: groupId,
-                        serverURL: chosenServerURL,
-                        filters: filters
-                    )
-                    subscriptionManager.addSubscription(subscription)
-                    
-                    completion(true)
-                } else {
-                    completion(false)
+                        let subscription = Subscription(
+                            topicName: self.topicName,
+                            groupId: groupId,
+                            serverURL: chosenServerURL,
+                            filters: filters
+                        )
+                        subscriptionManager.addSubscription(subscription)
+                        
+                        completion(true)
+                    } else {
+                        completion(false)
+                    }
                 }
             }
+        }
+        
+        // If already connected, create immediately; otherwise wait for connection
+        if NostrManager.shared.isConnected {
+            performCreation()
+        } else {
+            NostrManager.shared.$isConnected
+                .filter { $0 }
+                .first()
+                .sink { _ in
+                    performCreation()
+                }
+                .store(in: &cancellables)
         }
     }
     

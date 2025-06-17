@@ -34,23 +34,11 @@ struct CreateSubscriptionView: View {
                         .disableAutocorrection(true)
                 }
                 
-                DisclosureGroup(isExpanded: $viewModel.useAnotherServer) {
-                    TextField("Push server URL, e.g. ws://nopu.sh", text: $viewModel.serverURL)
-                        .keyboardType(.URL)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                } label: {
-                    HStack {
-                        Text("Use another push server")
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation {
-                            viewModel.useAnotherServer.toggle()
-                        }
-                    }
+                HStack {
+                    Text("Use another push server")
+                    Spacer()
+                    Text("Coming Soon")
+                        .foregroundColor(.secondary)
                 }
                 
                 // Basic Push Options
