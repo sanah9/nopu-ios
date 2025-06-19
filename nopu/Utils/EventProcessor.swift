@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 class EventProcessor {
     static let shared = EventProcessor()
     
