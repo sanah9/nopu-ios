@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import NostrSDK
 
 class SubscriptionViewModel: ObservableObject {
     // Basic subscription info
@@ -219,6 +220,45 @@ class SubscriptionViewModel: ObservableObject {
         return Int(text) != nil
     }
     
+    // MARK: - Bech32 Conversion
+    
+    /// Convert `npub...` bech32-encoded public key to hex string. Returns original string on failure.
+    private func npubToHexIfNeeded(_ value: String) -> String {
+        guard value.lowercased().hasPrefix("npub") else { return value }
+        do {
+            let (_, data5) = try Bech32.decode(value)
+
+            guard let bytes = convertBits5to8(data5) else {
+                return value
+            }
+            return bytes.map { String(format: "%02x", $0) }.joined()
+        } catch {
+            print("[SubscriptionViewModel] Failed npub->hex conversion: \(error)")
+            return value // fallback
+        }
+    }
+    
+    /// Convert 5-bit words to 8-bit byte array (no padding). Return nil on invalid input.
+    private func convertBits5to8(_ data: Data) -> [UInt8]? {
+        var acc = 0
+        var bits = 0
+        var result: [UInt8] = []
+        for v in data {
+            if v >> 5 != 0 { // value must be less than 32
+                return nil
+            }
+            acc = (acc << 5) | Int(v)
+            bits += 5
+            while bits >= 8 {
+                bits -= 8
+                let byte = UInt8((acc >> bits) & 0xFF)
+                result.append(byte)
+            }
+        }
+        // discard remaining bits (no padding)
+        return result
+    }
+    
     // MARK: - Filter Building
     
     func buildNostrFilter() -> [String: Any] {
@@ -287,16 +327,19 @@ class SubscriptionViewModel: ObservableObject {
         }
         
         if !unifiedFilter.authors.isEmpty {
-            filter["authors"] = unifiedFilter.authors
+            filter["authors"] = unifiedFilter.authors.map { npubToHexIfNeeded($0) }
         }
         
         if !unifiedFilter.kinds.isEmpty {
             filter["kinds"] = unifiedFilter.kinds
         }
         
+        var tagDict: [String: [String]] = [:]
         for tag in unifiedFilter.tags {
-            filter["#\(tag.key)"] = tag.values
+            let convertedValues = tag.key == "p" ? tag.values.map { npubToHexIfNeeded($0) } : tag.values
+            tagDict[tag.key] = convertedValues
         }
+        filter["tags"] = tagDict
         
         if useSinceDate, let since = unifiedFilter.sinceDate {
             filter["since"] = Int(since.timeIntervalSince1970)
@@ -504,13 +547,14 @@ class SubscriptionViewModel: ObservableObject {
         var config = NostrFilterConfig()
         
         config.eventIds = unifiedFilter.eventIds
-        config.authors = unifiedFilter.authors
+        config.authors = unifiedFilter.authors.map { npubToHexIfNeeded($0) }
         config.kinds = unifiedFilter.kinds
         
         // Convert UIFilterTag to dictionary format
         var tagDict: [String: [String]] = [:]
         for tag in unifiedFilter.tags {
-            tagDict[tag.key] = tag.values
+            let convertedValues = tag.key == "p" ? tag.values.map { npubToHexIfNeeded($0) } : tag.values
+            tagDict[tag.key] = convertedValues
         }
         config.tags = tagDict
         
@@ -526,7 +570,7 @@ class SubscriptionViewModel: ObservableObject {
     // Load from NostrFilterConfig to UI
     func loadFromNostrFilterConfig(_ config: NostrFilterConfig) {
         unifiedFilter.eventIds = config.eventIds
-        unifiedFilter.authors = config.authors
+        unifiedFilter.authors = config.authors.map { npubToHexIfNeeded($0) }
         unifiedFilter.kinds = config.kinds
         
         // Convert dictionary to UIFilterTag
