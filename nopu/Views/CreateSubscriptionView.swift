@@ -44,10 +44,17 @@ struct CreateSubscriptionView: View {
                 // Basic Push Options
                 DisclosureGroup(isExpanded: $viewModel.enableBasicOptions) {
                     Section("User Public Key") {
-                        TextField("Enter your public key (npub or hex format)", text: $viewModel.userPubkey)
-                            .font(.system(.caption, design: .monospaced))
-                            .disableAutocorrection(true)
-                            .autocapitalization(.none)
+                        VStack(alignment: .leading, spacing: 2) {
+                            TextField("Enter public key (npub or hex format)", text: $viewModel.userPubkey)
+                                .font(.system(.caption, design: .monospaced))
+                                .disableAutocorrection(true)
+                                .autocapitalization(.none)
+                            if !viewModel.userPubkey.isEmpty && !viewModel.isValidPubkey(viewModel.userPubkey) {
+                                Text("Invalid pubkey")
+                                    .font(.caption2)
+                                    .foregroundColor(.red)
+                            }
+                        }
                     }
                     
                     Section("Interaction Notifications") {
@@ -118,11 +125,12 @@ struct CreateSubscriptionView: View {
                             placeholder: "Add event ID",
                             text: $newEventId,
                             onAdd: {
-                                if !newEventId.isEmpty {
+                                if viewModel.isValidEventId(newEventId) {
                                     viewModel.unifiedFilter.eventIds.append(newEventId)
                                     newEventId = ""
                                 }
-                            }
+                            },
+                            validate: viewModel.isValidEventId
                         )
                     }
                     
@@ -139,11 +147,12 @@ struct CreateSubscriptionView: View {
                             placeholder: "Add author pubkey",
                             text: $newAuthor,
                             onAdd: {
-                                if !newAuthor.isEmpty {
+                                if viewModel.isValidPubkey(newAuthor) {
                                     viewModel.unifiedFilter.authors.append(newAuthor)
                                     newAuthor = ""
                                 }
-                            }
+                            },
+                            validate: viewModel.isValidPubkey
                         )
                     }
                     
@@ -156,18 +165,25 @@ struct CreateSubscriptionView: View {
                             )
                         }
                         
-                        HStack {
-                            TextField("Add kind number", text: $newKind)
-                                .keyboardType(.numberPad)
-                                .disableAutocorrection(true)
-                            Button("Add") {
-                                if let kind = Int(newKind) {
-                                    viewModel.unifiedFilter.kinds.append(kind)
-                                    viewModel.unifiedFilter.kinds.sort()
-                                    newKind = ""
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                TextField("Add kind number", text: $newKind)
+                                    .keyboardType(.numberPad)
+                                    .disableAutocorrection(true)
+                                Button("Add") {
+                                    if let kind = Int(newKind) {
+                                        viewModel.unifiedFilter.kinds.append(kind)
+                                        viewModel.unifiedFilter.kinds.sort()
+                                        newKind = ""
+                                    }
                                 }
+                                .disabled(newKind.isEmpty || !viewModel.isValidKindNumber(newKind))
                             }
-                            .disabled(newKind.isEmpty)
+                            if !newKind.isEmpty && !viewModel.isValidKindNumber(newKind) {
+                                Text("Invalid kind number")
+                                    .font(.caption2)
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                     
@@ -191,11 +207,18 @@ struct CreateSubscriptionView: View {
                             HStack {
                                 Spacer()
                                 Button("Add") {
-                                    viewModel.addTagFilter(key: newTagKey, value: newTagValue)
-                                    newTagKey = ""
-                                    newTagValue = ""
+                                    if viewModel.isValidTagKey(newTagKey) {
+                                        viewModel.addTagFilter(key: newTagKey, value: newTagValue)
+                                        newTagKey = ""
+                                        newTagValue = ""
+                                    }
                                 }
-                                .disabled(newTagKey.isEmpty || newTagValue.isEmpty)
+                                .disabled(newTagKey.isEmpty || newTagValue.isEmpty || !viewModel.isValidTagKey(newTagKey))
+                            }
+                            if !newTagKey.isEmpty && !viewModel.isValidTagKey(newTagKey) {
+                                Text("Invalid tag key")
+                                    .font(.caption2)
+                                    .foregroundColor(.red)
                             }
                         }
                     }
@@ -307,7 +330,7 @@ struct CreateSubscriptionView: View {
                             }
                         }
                     }
-                    .disabled(viewModel.topicName.isEmpty)
+                    .disabled(viewModel.topicName.isEmpty || (!viewModel.userPubkey.isEmpty && !viewModel.isValidPubkey(viewModel.userPubkey)))
                 }
             }
             .alert("Error", isPresented: $showErrorAlert) {

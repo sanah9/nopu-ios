@@ -76,11 +76,12 @@ struct EditSubscriptionView: View {
                             placeholder: "Add Event ID",
                             text: $newEventId,
                             onAdd: {
-                                if !newEventId.isEmpty {
+                                if viewModel.isValidEventId(newEventId) {
                                     viewModel.unifiedFilter.eventIds.append(newEventId)
                                     newEventId = ""
                                 }
-                            }
+                            },
+                            validate: viewModel.isValidEventId
                         )
                     }
                     
@@ -97,11 +98,12 @@ struct EditSubscriptionView: View {
                             placeholder: "Add Author Pubkey",
                             text: $newAuthor,
                             onAdd: {
-                                if !newAuthor.isEmpty {
+                                if viewModel.isValidPubkey(newAuthor) {
                                     viewModel.unifiedFilter.authors.append(newAuthor)
                                     newAuthor = ""
                                 }
-                            }
+                            },
+                            validate: viewModel.isValidPubkey
                         )
                     }
                     
@@ -119,16 +121,23 @@ struct EditSubscriptionView: View {
                             }
                         }
                         
-                        HStack {
-                            TextField("Event Kind Number", text: $newKind)
-                                .keyboardType(.numberPad)
-                            Button("Add") {
-                                if let kind = Int(newKind), !newKind.isEmpty {
-                                    viewModel.unifiedFilter.kinds.append(kind)
-                                    newKind = ""
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                TextField("Event Kind Number", text: $newKind)
+                                    .keyboardType(.numberPad)
+                                Button("Add") {
+                                    if let kind = Int(newKind) {
+                                        viewModel.unifiedFilter.kinds.append(kind)
+                                        newKind = ""
+                                    }
                                 }
+                                .disabled(newKind.isEmpty || !viewModel.isValidKindNumber(newKind))
                             }
-                            .disabled(newKind.isEmpty || Int(newKind) == nil)
+                            if !newKind.isEmpty && !viewModel.isValidKindNumber(newKind) {
+                                Text("Invalid kind number")
+                                    .font(.caption2)
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                     
@@ -175,13 +184,18 @@ struct EditSubscriptionView: View {
                             TextField("Tag Value", text: $newTagValue)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                             Button("Add") {
-                                if !newTagKey.isEmpty && !newTagValue.isEmpty {
+                                if viewModel.isValidTagKey(newTagKey) && !newTagValue.isEmpty {
                                     viewModel.addTagFilter(key: newTagKey, value: newTagValue)
                                     newTagKey = ""
                                     newTagValue = ""
                                 }
                             }
-                            .disabled(newTagKey.isEmpty || newTagValue.isEmpty)
+                            .disabled(newTagKey.isEmpty || newTagValue.isEmpty || !viewModel.isValidTagKey(newTagKey))
+                            if !newTagKey.isEmpty && !viewModel.isValidTagKey(newTagKey) {
+                                Text("Invalid tag key")
+                                    .font(.caption2)
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                     

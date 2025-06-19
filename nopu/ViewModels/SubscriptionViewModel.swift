@@ -193,6 +193,32 @@ class SubscriptionViewModel: ObservableObject {
         return url.scheme == "ws" || url.scheme == "wss"
     }
     
+    // MARK: - Input Validation Helpers
+    
+    /// Validate event ID – must be a 64-character hexadecimal string
+    func isValidEventId(_ id: String) -> Bool {
+        let pattern = "^[0-9a-fA-F]{64}$"
+        return id.range(of: pattern, options: .regularExpression) != nil
+    }
+    
+    /// Validate pubkey – 64-char hex or a bech32 string starting with "npub"
+    func isValidPubkey(_ key: String) -> Bool {
+        if isValidEventId(key) { return true }
+        let lower = key.lowercased()
+        return lower.hasPrefix("npub") && lower.count >= 59 && lower.count <= 65
+    }
+    
+    /// Validate tag key – lowercase letters a-z only
+    func isValidTagKey(_ key: String) -> Bool {
+        let pattern = "^[a-z]+$"
+        return key.range(of: pattern, options: .regularExpression) != nil
+    }
+    
+    /// Validate event kind – must be an integer string (>=0)
+    func isValidKindNumber(_ text: String) -> Bool {
+        return Int(text) != nil
+    }
+    
     // MARK: - Filter Building
     
     func buildNostrFilter() -> [String: Any] {

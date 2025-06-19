@@ -53,15 +53,24 @@ struct AddItemRow: View {
     let placeholder: String
     @Binding var text: String
     let onAdd: () -> Void
+    var validate: (String) -> Bool = { !$0.isEmpty }
     
     var body: some View {
-        HStack {
-            TextField(placeholder, text: $text)
-                .disableAutocorrection(true)
-            Button("Add") {
-                onAdd()
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                TextField(placeholder, text: $text)
+                    .disableAutocorrection(true)
+                Button("Add") {
+                    onAdd()
+                }
+                .disabled(!validate(text))
+                .buttonStyle(BorderlessButtonStyle())
             }
-            .disabled(text.isEmpty)
+            if !text.isEmpty && !validate(text) {
+                Text("Invalid format")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
         }
     }
 }
