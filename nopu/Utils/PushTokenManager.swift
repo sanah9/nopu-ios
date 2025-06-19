@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 final class PushTokenManager {
     static let shared = PushTokenManager()
     private init() {

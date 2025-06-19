@@ -6,6 +6,7 @@ import NostrSDK
  * NostrManager - A convenient utility class for Nostr using nostr-sdk-ios
  * Replaces the previous Rust FFI implementation
  */
+@MainActor
 public class NostrManager: ObservableObject, RelayDelegate {
     
     // MARK: - Singleton
@@ -380,9 +381,12 @@ public class NostrManager: ObservableObject, RelayDelegate {
         eventSubjects[subscriptionId] = subject
         
         // Set up timeout
-        let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(timeoutSeconds), repeats: false) { [weak self] _ in
-            subject.send(completion: .finished)
-            self?.cleanupSubscription(subscriptionId)
+        let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(timeoutSeconds), repeats: false) { [subscriptionId] _ in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
+                self.eventSubjects[subscriptionId]?.send(completion: .finished)
+                self.cleanupSubscription(subscriptionId)
+            }
         }
         
         eventTimeouts[subscriptionId] = timer

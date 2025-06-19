@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import NostrSDK
 
+@MainActor
 class SubscriptionViewModel: ObservableObject {
     // Basic subscription info
     @Published var topicName = ""

@@ -36,6 +36,7 @@ struct ServerGroup {
     }
 }
 
+@MainActor
 class SubscriptionManager: ObservableObject {
     @Published var subscriptions: [Subscription] = []
     @Published var serverGroups: [ServerGroup] = []

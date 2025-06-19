@@ -7,11 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5E38B3BE2DFAE53000F332F2 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E38B3BD2DFAE53000F332F2 /* NostrSDK */; };
-		5E38B3C12DFAE69C00F332F2 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E38B3C02DFAE69C00F332F2 /* NostrSDK */; };
-		5E6E16332DFA8C4A00A2B3AA /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16322DFA8C4A00A2B3AA /* NostrSDK */; };
-		5E6E16572DFA8D0100A2B3AA /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16562DFA8D0100A2B3AA /* NostrSDK */; };
-		5E6E16BD2DFA8F5500A2B3AA /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16BC2DFA8F5500A2B3AA /* NostrSDK */; };
+		5E430BC42E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16322DFA8C4A00A2B3AA /* NostrSDK */; };
+		5E430BC52E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16562DFA8D0100A2B3AA /* NostrSDK */; };
+		5E430BC62E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E6E16BC2DFA8F5500A2B3AA /* NostrSDK */; };
+		5E430BC72E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E38B3BD2DFAE53000F332F2 /* NostrSDK */; };
+		5E430BC82E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5E38B3C02DFAE69C00F332F2 /* NostrSDK */; };
+		5E430BC92E03F8FD00E6B9E6 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5EEA13D82E03B18F0095A4F0 /* NostrSDK */; };
+		5EEA14232E03B3310095A4F0 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5EEA14222E03B3310095A4F0 /* NostrSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,11 +46,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5E38B3BE2DFAE53000F332F2 /* NostrSDK in Frameworks */,
-				5E6E16572DFA8D0100A2B3AA /* NostrSDK in Frameworks */,
-				5E6E16332DFA8C4A00A2B3AA /* NostrSDK in Frameworks */,
-				5E6E16BD2DFA8F5500A2B3AA /* NostrSDK in Frameworks */,
-				5E38B3C12DFAE69C00F332F2 /* NostrSDK in Frameworks */,
+				5E430BC92E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5E430BC82E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5E430BC72E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5E430BC62E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5E430BC52E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5E430BC42E03F8FD00E6B9E6 /* NostrSDK in Frameworks */,
+				5EEA14232E03B3310095A4F0 /* NostrSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,6 +100,8 @@
 				5E6E16BC2DFA8F5500A2B3AA /* NostrSDK */,
 				5E38B3BD2DFAE53000F332F2 /* NostrSDK */,
 				5E38B3C02DFAE69C00F332F2 /* NostrSDK */,
+				5EEA13D82E03B18F0095A4F0 /* NostrSDK */,
+				5EEA14222E03B3310095A4F0 /* NostrSDK */,
 			);
 			productName = nopu;
 			productReference = 5E2608C72DF7E97E00F63BC5 /* nopu.app */;
@@ -126,7 +132,7 @@
 			mainGroup = 5E2608BE2DF7E97E00F63BC5;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				5E38B3BF2DFAE69C00F332F2 /* XCLocalSwiftPackageReference "../nostr-sdk-ios" */,
+				5EEA14212E03B3310095A4F0 /* XCLocalSwiftPackageReference "../nostr-sdk-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5E2608C82DF7E97E00F63BC5 /* Products */;
@@ -285,13 +291,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = nopu/nopu.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"nopu/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 5FC8HJM6XP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nopu/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = nopu;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -302,10 +312,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nopu.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.nopu.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = sh.nopu.app;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -319,13 +330,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = nopu/nopu.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"nopu/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 5FC8HJM6XP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nopu/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = nopu;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -336,10 +351,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nopu.app;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.nopu.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = sh.nopu.app;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -370,7 +386,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		5E38B3BF2DFAE69C00F332F2 /* XCLocalSwiftPackageReference "../nostr-sdk-ios" */ = {
+		5EEA14212E03B3310095A4F0 /* XCLocalSwiftPackageReference "../nostr-sdk-ios" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../nostr-sdk-ios";
 		};
@@ -394,6 +410,14 @@
 			productName = NostrSDK;
 		};
 		5E6E16BC2DFA8F5500A2B3AA /* NostrSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NostrSDK;
+		};
+		5EEA13D82E03B18F0095A4F0 /* NostrSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NostrSDK;
+		};
+		5EEA14222E03B3310095A4F0 /* NostrSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = NostrSDK;
 		};
