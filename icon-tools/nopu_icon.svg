@@ -11,6 +11,6 @@
     <!-- Bell icon -->
     <path d="M512 420 a120 120 0 0 0 -120 120 v90 l-36 36 v36 h304 v-36 l-36 -36 v-90 a120 120 0 0 0 -120 -120 z"/>
     <!-- Clapper -->
-    <circle cx="512" cy="750" r="32" fill="#ffffff" stroke="none"/>
+    <circle cx="512" cy="730" r="32" fill="#ffffff" stroke="none"/>
   </g>
 </svg> 
