@@ -8,7 +8,6 @@
 import Foundation
 import CoreData
 
-@MainActor
 class DatabaseManager: ObservableObject {
     static let shared = DatabaseManager()
     
