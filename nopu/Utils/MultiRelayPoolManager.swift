@@ -239,7 +239,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
     }
     
-    @MainActor public func relay(_ relay: Relay, didReceive response: RelayResponse) {
+    public func relay(_ relay: Relay, didReceive response: RelayResponse) {
         switch response {
         case .event:
             break // Events will be handled in didReceive event
@@ -261,7 +261,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
         }
     }
     
-    @MainActor public func relay(_ relay: Relay, didReceive event: RelayEvent) {
+    public func relay(_ relay: Relay, didReceive event: RelayEvent) {
         print("Received event - ID: \(event.event.id), Kind: \(event.event.kind), Author: \(event.event.pubkey)")
         
         // Print original tags data
@@ -598,7 +598,7 @@ public class ServerConnection: ObservableObject, RelayDelegate {
     /// - Parameters:
     ///   - relay: The relay requesting authentication.
     ///   - challenge: The challenge string provided by the relay.
-    @MainActor private func respondToAuthChallenge(relay: Relay, challenge: String) {
+    private func respondToAuthChallenge(relay: Relay, challenge: String) {
         guard let relayPool = relayPool else {
             print("[Auth] Relay pool not initialized – cannot respond to challenge")
             return

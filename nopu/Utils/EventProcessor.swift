@@ -85,7 +85,7 @@ class EventProcessor {
     }
     
     // Parse amount from bolt11 string
-    nonisolated func parseBolt11Amount(_ bolt11: String) -> Int? {
+    func parseBolt11Amount(_ bolt11: String) -> Int? {
         // Remove 'lightning:' prefix if present
         let cleanBolt11 = bolt11.hasPrefix("lightning:") ? String(bolt11.dropFirst(10)) : bolt11
         
