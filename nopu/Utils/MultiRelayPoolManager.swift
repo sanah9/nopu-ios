@@ -13,7 +13,7 @@ import NostrSDK
  * MultiRelayPoolManager - Manages multiple Relay Pools and automatic reconnection
  * Creates independent RelayPool for each server for better connection management
  */
-public class MultiRelayPoolManager: ObservableObject {
+@MainActor public class MultiRelayPoolManager: ObservableObject {
     
     // MARK: - Singleton
     public static let shared = MultiRelayPoolManager()
