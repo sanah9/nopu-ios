@@ -7,12 +7,10 @@
   <rect x="160" y="160" width="704" height="704" rx="180" fill="none" stroke="#10b981" stroke-width="48"/>
 
   <!-- Stylized black "</>" symbol -->
-  <g stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Left bracket -->
-    <polyline points="400,412 320,512 400,612"/>
-    <!-- Letter n -->
-    <polyline points="480,572 480,460 552,460 552,572"/>
-    <!-- Right bracket -->
-    <polyline points="624,412 704,512 624,612"/>
+  <g stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(10,-60)">
+    <!-- Bell icon -->
+    <path d="M512 420 a120 120 0 0 0 -120 120 v90 l-36 36 v36 h304 v-36 l-36 -36 v-90 a120 120 0 0 0 -120 -120 z"/>
+    <!-- Clapper -->
+    <circle cx="512" cy="750" r="32" fill="#ffffff" stroke="none"/>
   </g>
 </svg> 
