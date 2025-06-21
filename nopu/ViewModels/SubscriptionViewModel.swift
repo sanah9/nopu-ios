@@ -455,9 +455,10 @@ class SubscriptionViewModel: ObservableObject {
         }
     }
     
-    func createSubscriptionWithGroup(subscriptionManager: SubscriptionManager, completion: @escaping (Bool) -> Void) {
+    func createSubscriptionWithGroup(subscriptionManager: SubscriptionManager, completion: @escaping (Bool, String?) -> Void) {
         // Generate a unique group ID
         let groupId = UUID().uuidString.lowercased()
+        var didComplete = false
         
         // Ensure NostrManager has at least one relay and is connected BEFORE creating events
         if !NostrManager.shared.isConnected {
@@ -466,6 +467,14 @@ class SubscriptionViewModel: ObservableObject {
                 NostrManager.shared.addRelay(url: defaultRelay)
             }
             NostrManager.shared.connectIfRelaysAvailable()
+
+            // ⏱️ Wait up to 3 seconds; if not connected by then, report failure
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                if !NostrManager.shared.isConnected && !didComplete {
+                    didComplete = true
+                    completion(false, NostrManager.shared.lastError ?? "Failed to connect to relay server.")
+                }
+            }
         }
         
         // Build about JSON string first
@@ -497,9 +506,16 @@ class SubscriptionViewModel: ObservableObject {
                         )
                         subscriptionManager.addSubscription(subscription)
                         
-                        completion(true)
+                        if !didComplete {
+                            didComplete = true
+                            completion(true, nil)
+                        }
                     } else {
-                        completion(false)
+                        // On failure propagate `NostrManager.lastError` back to the caller
+                        if !didComplete {
+                            didComplete = true
+                            completion(false, NostrManager.shared.lastError ?? "Unknown error")
+                        }
                     }
                 }
             }

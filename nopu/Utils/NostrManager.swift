@@ -35,6 +35,12 @@ public class NostrManager: ObservableObject, RelayDelegate {
     
     public func relayStateDidChange(_ relay: Relay, state: Relay.State) {
         print("Relay state changed - URL: \(relay.url), State: \(state)")
+        
+        // When the relay enters the `.error` state, cache the error description in `lastError` so the UI can surface it
+        if case .error(let error) = state {
+            self.lastError = error.localizedDescription
+        }
+        
         updateConnectionStatus(with: relayPool?.relays ?? [])
     }
     
@@ -257,6 +263,10 @@ public class NostrManager: ObservableObject, RelayDelegate {
         guard let relayPool = relayPool,
               let relayURL = URL(string: url) else {
             self.lastError = "Invalid relay URL or relay pool not initialized"
+            return
+        }
+        
+        if relayPool.relays.contains(where: { $0.url == relayURL }) {
             return
         }
         

@@ -83,19 +83,19 @@ struct CreateSubscriptionView: View {
                         )
                     }
                     
-                    // Section("Social Notifications") {
-                    //     NotificationToggle(
-                    //         title: "Following posts",
-                    //         subtitle: "Notify when people you follow post new notes",
-                    //         isOn: $viewModel.notifyOnFollowsPosts
-                    //     )
+                    Section("Social Notifications") {
+                        // NotificationToggle(
+                        //     title: "Following posts",
+                        //     subtitle: "Notify when people you follow post new notes",
+                        //     isOn: $viewModel.notifyOnFollowsPosts
+                        // )
                         
-                    //     NotificationToggle(
-                    //         title: "Direct messages",
-                    //         subtitle: "Notify when you receive direct messages",
-                    //         isOn: $viewModel.notifyOnDMs
-                    //     )
-                    // }
+                        NotificationToggle(
+                            title: "Direct messages",
+                            subtitle: "Notify when you receive direct messages",
+                            isOn: $viewModel.notifyOnDMs
+                        )
+                    }
                 } label: {
                     HStack {
                         Text("Basic options")
@@ -322,10 +322,11 @@ struct CreateSubscriptionView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Subscribe") {
-                        viewModel.createSubscriptionWithGroup(subscriptionManager: subscriptionManager) { success in
+                        viewModel.createSubscriptionWithGroup(subscriptionManager: subscriptionManager) { success, error in
                             if success {
                                 presentationMode.wrappedValue.dismiss()
                             } else {
+                                errorMessage = error ?? "Subscription failed. Please ensure you are connected to at least one relay server."
                                 showErrorAlert = true
                             }
                         }
