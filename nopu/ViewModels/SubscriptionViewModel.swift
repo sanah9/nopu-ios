@@ -313,7 +313,7 @@ class SubscriptionViewModel: ObservableObject {
         
         // Add user pubkey filter if available
         if !userPubkey.isEmpty {
-            filter["#p"] = [userPubkey]
+            filter["#p"] = [npubToHexIfNeeded(userPubkey)]
         }
         
         return filter
