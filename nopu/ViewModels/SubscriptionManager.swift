@@ -41,6 +41,9 @@ class SubscriptionManager: ObservableObject {
     @Published var serverGroups: [ServerGroup] = []
     @Published var isAutoConnectEnabled = true
     
+    // Error message to display when subscription deletion fails
+    @Published var deletionErrorMessage: String? = nil
+    
     private let databaseManager = DatabaseManager.shared
     private let multiRelayManager = MultiRelayPoolManager.shared
     private let eventProcessor = EventProcessor.shared
@@ -194,6 +197,22 @@ class SubscriptionManager: ObservableObject {
             return
         }
 
+        // 🚀 Send a kind 9008 event with h tag = groupId before cancelling the subscription
+        sendDeleteGroupEvent(groupId: subscription.groupId) { [weak self] success in
+            guard let self = self else { return }
+            if success {
+                // Introduce a slight delay to ensure the relay processes the deletion event
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.performRemoval(subscription: subscription)
+                }
+            } else {
+                self.deletionErrorMessage = "Deletion failed: Unable to send deletion event to the server. Please check your network and try again."
+            }
+        }
+    }
+    
+    private func performRemoval(subscription: Subscription) {
+        let id = subscription.id
         // 1️⃣ Unsubscribe from MultiRelayPoolManager first
         let serverURL = subscription.serverURL.isEmpty ? "default" : subscription.serverURL
         let subscriptionId = "sub_\(subscription.groupId)"
@@ -409,6 +428,31 @@ class SubscriptionManager: ObservableObject {
                 self.subscriptions[idx] = updatedSubscription
                 self.updateServerGroups()
             }
+        }
+    }
+    
+    // MARK: - Private Helpers
+    private func sendDeleteGroupEvent(groupId: String, completion: @escaping (Bool) -> Void) {
+        let deletionTags = [["h", groupId]]
+        
+        // Ensure there is at least one relay; if none, add the default relay
+        if NostrManager.shared.activeRelays.isEmpty {
+            let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? AppConfig.defaultServerURL
+            if NostrManager.shared.isValidWebSocketURL(defaultRelay) {
+                NostrManager.shared.addRelay(url: defaultRelay)
+            }
+        }
+        
+        // If not yet connected, connect first and then send the event
+        if !NostrManager.shared.isConnected {
+            NostrManager.shared.connectIfRelaysAvailable()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
+                completion(eventId != nil)
+            }
+        } else {
+            let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
+            completion(eventId != nil)
         }
     }
 } 

@@ -15,6 +15,8 @@ struct NotificationView: View {
     // Temporarily disabled edit functionality
     // @State private var showingEditView = false
     // @State private var subscriptionToEdit: Subscription?
+    // Alert for deletion failure
+    @State private var showDeletionErrorAlert = false
     
     var body: some View {
         NavigationView {
@@ -104,6 +106,18 @@ struct NotificationView: View {
             }
             .sheet(isPresented: $showingConnectionStatus) {
                 ConnectionStatusView(subscriptionManager: subscriptionManager)
+            }
+            .alert("Deletion Failed", isPresented: $showDeletionErrorAlert) {
+                Button("OK", role: .cancel) {
+                    subscriptionManager.deletionErrorMessage = nil
+                }
+            } message: {
+                Text(subscriptionManager.deletionErrorMessage ?? "Unknown error")
+            }
+            .onReceive(subscriptionManager.$deletionErrorMessage) { msg in
+                if msg != nil {
+                    showDeletionErrorAlert = true
+                }
             }
             // Temporarily disabled edit functionality
             /*
