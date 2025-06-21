@@ -12,7 +12,7 @@ struct NotificationDetailView: View {
     @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var selectedNotification: NotificationItem?
     @State private var showingEditView = false
-    @State private var visibleRange: Range<Int> = 0..<20 // Initially load 20 items
+    @State private var visibleRange: Range<Int> = 0..<0 // Empty range by default; will be initialized in onAppear
     
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +21,7 @@ struct NotificationDetailView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(subscription.notifications[visibleRange].enumerated()), id: \.1.id) { index, notification in
+                        ForEach(Array(subscription.notifications.prefix(visibleRange.upperBound).enumerated()), id: \.1.id) { index, notification in
                             NotificationItemRow(
                                 notification: notification,
                                 onTap: {
@@ -31,7 +31,7 @@ struct NotificationDetailView: View {
                             .equatable()
                             .id(notification.id) // Preserve scroll position
                             .onAppear {
-                                // Load more when the last 5 items come into view
+                                // Load more when scrolling near the bottom
                                 if index >= visibleRange.upperBound - 5 && visibleRange.upperBound < subscription.notifications.count {
                                     loadMore()
                                 }
@@ -63,7 +63,10 @@ struct NotificationDetailView: View {
             }
         }
         .onAppear {
+            // Mark as read and initialize visible range when the view appears
             subscriptionManager.markAsRead(id: subscription.id)
+            let initialUpperBound = min(20, subscription.notifications.count)
+            visibleRange = 0..<initialUpperBound
         }
         .sheet(item: $selectedNotification) { notification in
             NotificationEventDetailView(notification: notification)
