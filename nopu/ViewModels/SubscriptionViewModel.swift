@@ -272,9 +272,7 @@ class SubscriptionViewModel: ObservableObject {
     
     private func buildBasicFilter() -> [String: Any] {
         var kinds: [Int] = []
-        var filter: [String: Any] = [
-            "since": Int(Date().timeIntervalSince1970)
-        ]
+        var filter: [String: Any] = [:]
         
         // Collect all selected notification kinds
         if notifyOnLikes {
