@@ -33,5 +33,19 @@ Nopu iOS client.
 3. Run & Debug  
    Select a simulator or physical device, then click "Run" or press `⌘R`.
 
+## Roadmap
+
+### Completed
+- Subscribe to any topic with fully customizable filters, just like the Nostr `REQ` filter grammar  
+- iOS APNs push notifications  
+- In-app notification & event persistence  
+
+### Planned / In Progress
+- More user-friendly notification previews  
+- Advanced, fine-grained filter builder  
+- More robust relay reconnection mechanism  
+- Support for custom push servers  
+- User account with the ability to restore topics  
+
 ## License
 This project is released under the MIT License. See [LICENSE](LICENSE) for details.
