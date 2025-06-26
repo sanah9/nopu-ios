@@ -11,33 +11,26 @@ struct NotificationMessageBuilder {
         return nil
     }
     
-    private static func formatLikeContent(_ content: String) -> String {
-        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedContent == "+" {
-            return "👍"
-        } else if trimmedContent == "-" {
-            return "👎"
-        } else {
-            return trimmedContent
-        }
-    }
-    
     private static func buildMessage(for eventKind: Int, eventData: [String: Any], displayName: String) -> String {
         let tags = eventData["tags"] as? [[String]] ?? []
         let content = eventData["content"] as? String ?? ""
+        let emojiMap = CustomEmojiManager.shared.parseEmojiTags(from: tags)
         
         switch eventKind {
         case 1:
             if tagValue("p", from: tags) != nil {
                 if tagValue("q", from: tags) != nil {
-                    return "Quote reposted your message: \(content)"
+                    let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
+                    return "Quote reposted your message: \(processedContent)"
                 } else {
-                    return "Replied to your message: \(content)"
+                    let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
+                    return "Replied to your message: \(processedContent)"
                 }
             }
-            return "New message: \(content)"
+            let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
+            return "New message: \(processedContent)"
         case 7:
-            let formattedContent = formatLikeContent(content)
+            let formattedContent = CustomEmojiManager.shared.formatReactionContent(content, emojiMap: emojiMap)
             return "\(displayName) liked your note: \(formattedContent)"
         case 1059:
             return "Received a direct message"

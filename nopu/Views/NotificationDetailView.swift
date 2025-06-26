@@ -149,11 +149,41 @@ struct NotificationItemRow: View, Equatable {
                             .foregroundColor(.secondary)
                     }
                     
-                    Text(notification.message)
-                        .font(.system(size: 15))
-                        .foregroundColor(.primary)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
+                    // Use rich text view if we have emoji data, otherwise use plain text
+                    if let eventJSON = notification.eventJSON,
+                       let eventData = eventJSON.data(using: .utf8),
+                       let eventDict = try? JSONSerialization.jsonObject(with: eventData) as? [String: Any],
+                       let tags = eventDict["tags"] as? [[String]],
+                       let originalContent = eventDict["content"] as? String {
+                        let emojiMap = CustomEmojiManager.shared.parseEmojiTags(from: tags)
+                        if !emojiMap.isEmpty {
+                            // Extract the content part from the notification message
+                            let messagePrefix = extractMessagePrefix(notification.message, originalContent: originalContent, emojiMap: emojiMap)
+                            
+                            HStack(alignment: .top, spacing: 4) {
+                                if !messagePrefix.isEmpty {
+                                    Text(messagePrefix)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.primary)
+                                }
+                                RichTextView(content: originalContent, emojiMap: emojiMap)
+                            }
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(notification.message)
+                                .font(.system(size: 15))
+                                .foregroundColor(.primary)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    } else {
+                        Text(notification.message)
+                            .font(.system(size: 15))
+                            .foregroundColor(.primary)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 
                 // Unread indicator
@@ -224,5 +254,28 @@ struct NotificationItemRow: View, Equatable {
 
     private func formatRelativeTime(_ date: Date) -> String {
         Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
+    }
+    
+    /// Extract the message prefix (like "John liked your note: ") from the notification message
+    private func extractMessagePrefix(_ notificationMessage: String, originalContent: String, emojiMap: [String: String]) -> String {
+        // Process original content to see what it would look like with 🖼️ replacements
+        let processedContent = CustomEmojiManager.shared.processContentForPlainText(originalContent, emojiMap: emojiMap)
+        
+        // Find where the processed content appears in the notification message
+        if let range = notificationMessage.range(of: processedContent) {
+            // Return everything before the processed content
+            return String(notificationMessage[..<range.lowerBound])
+        }
+        
+        // Fallback: try to find common patterns
+        let patterns = [": ", " liked your note: ", " reposted your message: ", " replied to your message: "]
+        for pattern in patterns {
+            if let range = notificationMessage.range(of: pattern) {
+                return String(notificationMessage[...range.upperBound])
+            }
+        }
+        
+        // If we can't extract prefix, return empty string to show full rich text
+        return ""
     }
 } 
