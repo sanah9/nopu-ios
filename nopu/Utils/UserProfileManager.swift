@@ -104,10 +104,18 @@ class UserProfileManager: ObservableObject {
             return
         }
         
-        // Create filter to get user's kind 0 event
+        // Get since timestamp from cached profile
+        var sinceTimestamp: Int? = nil
+        if let cachedProfile = profileCache[pubkey] {
+            // Set since to cached profile's created_at + 1 to only get newer events
+            sinceTimestamp = Int(cachedProfile.createdAt.timeIntervalSince1970) + 1
+        }
+        
+        // Create filter to get user's kind 0 event with since optimization
         guard let filter = Filter(
             authors: [pubkey],
             kinds: [0],
+            since: sinceTimestamp,
             limit: 1
         ) else {
             completion(nil)
@@ -119,24 +127,32 @@ class UserProfileManager: ObservableObject {
         
         // Set up timeout
         let timer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+            // If we used since filter and got no new events, return cached profile
+            if sinceTimestamp != nil, let cachedProfile = self?.profileCache[pubkey] {
+                completion(cachedProfile)
+            } else {
+                completion(nil)
+            }
             self?.cleanupProfileSubscription(subscriptionId)
-            completion(nil)
         }
         
         // Store timer for cleanup
         profileEventTimeouts[subscriptionId] = timer
         
-        // Store completion for this subscription
+        // Store completion and context for this subscription
         profileEventCompletions[subscriptionId] = completion
+        profileEventContexts[subscriptionId] = (pubkey: pubkey, hasSince: sinceTimestamp != nil)
     }
     
     private var profileEventTimeouts: [String: Timer] = [:]
     private var profileEventCompletions: [String: (UserProfile?) -> Void] = [:]
+    private var profileEventContexts: [String: (pubkey: String, hasSince: Bool)] = [:]
     
     private func cleanupProfileSubscription(_ subscriptionId: String) {
         profileEventTimeouts[subscriptionId]?.invalidate()
         profileEventTimeouts.removeValue(forKey: subscriptionId)
         profileEventCompletions.removeValue(forKey: subscriptionId)
+        profileEventContexts.removeValue(forKey: subscriptionId)
         profileRelayPool?.closeSubscription(with: subscriptionId)
     }
     
@@ -152,12 +168,14 @@ class UserProfileManager: ObservableObject {
             let name = json["name"] as? String
             let about = json["about"] as? String
             let picture = json["picture"] as? String
+            let createdAt = Date(timeIntervalSince1970: TimeInterval(event.createdAt))
             
             let profile = UserProfile(
                 pubkey: pubkey,
                 name: name,
                 about: about,
-                picture: picture
+                picture: picture,
+                createdAt: createdAt
             )
             
             // Get completion and cleanup
@@ -212,8 +230,18 @@ extension UserProfileManager: RelayDelegate {
         switch response {
         case .event:
             break // Events will be handled in didReceive event
-        case .eose(_):
-            break // End of stored events
+        case .eose(let subscriptionId):
+            // End of stored events - handle case where no new events found
+            if let context = profileEventContexts[subscriptionId],
+               let completion = profileEventCompletions[subscriptionId] {
+                
+                // If we used since filter and got EOSE without events, return cached profile
+                if context.hasSince, let cachedProfile = profileCache[context.pubkey] {
+                    cleanupProfileSubscription(subscriptionId)
+                    completion(cachedProfile)
+                }
+                // If no since filter was used, we'll wait for timeout or event
+            }
         case .closed(let subscriptionId, _):
             cleanupProfileSubscription(subscriptionId)
         default:
