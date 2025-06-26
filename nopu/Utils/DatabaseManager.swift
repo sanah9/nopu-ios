@@ -260,6 +260,36 @@ class DatabaseManager: ObservableObject {
         }
     }
     
+    /// Update notification message and related subscription data
+    func updateNotificationMessage(notificationId: UUID, newMessage: String) {
+        let request: NSFetchRequest<NotificationEntity> = NotificationEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", notificationId as CVarArg)
+        
+        do {
+            guard let notificationEntity = try context.fetch(request).first else { return }
+            
+            // Update notification message
+            notificationEntity.message = newMessage
+            
+            // If this is the latest notification, update the subscription's latest message too
+            if let subscription = notificationEntity.subscription,
+               let allNotifications = subscription.notifications?.allObjects as? [NotificationEntity] {
+                let sortedNotifications = allNotifications.sorted { 
+                    ($0.receivedAt ?? Date()) > ($1.receivedAt ?? Date()) 
+                }
+                
+                // If this is the most recent notification, update subscription's latest message
+                if let mostRecent = sortedNotifications.first, mostRecent.id == notificationId {
+                    subscription.latestMessage = newMessage
+                }
+            }
+            
+            save()
+        } catch {
+            // Silent error handling
+        }
+    }
+    
     // MARK: - Utility Methods
     
     func convertToSubscription(_ entity: SubscriptionEntity) -> Subscription {

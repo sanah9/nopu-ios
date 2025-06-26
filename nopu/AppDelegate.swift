@@ -26,7 +26,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Load previously saved device token (if any) into memory
         _ = PushTokenManager.shared // initialize
-
+        
+        // Initialize UserProfileManager to cleanup expired cache
+        _ = UserProfileManager.shared // initialize
+        
         // set badge number to 0
         UIApplication.shared.applicationIconBadgeNumber = 0
 

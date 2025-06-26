@@ -94,7 +94,7 @@ class SubscriptionManager: ObservableObject {
         // Connect if relays are available
         NostrManager.shared.connectIfRelaysAvailable()
         
-        print("Configured \(allRelayURLs.count) relays from subscriptions: \(Array(allRelayURLs))")
+
     }
     
     // Group subscriptions by serverURL
@@ -381,14 +381,12 @@ class SubscriptionManager: ObservableObject {
     func handleEvent20284(_ eventString: String) {
         // Parse the incoming event only once to avoid repeated JSON parsing
         guard let (groupId, eventContent) = eventProcessor.processEvent20284(eventString) else {
-            print("Failed to process 20284 event")
             return
         }
 
         // Convert JSON string into dictionary for reuse
         guard let contentData = eventContent.data(using: .utf8),
               let eventDict = try? JSONSerialization.jsonObject(with: contentData) as? [String: Any] else {
-            print("Failed to parse inner event JSON")
             return
         }
 
@@ -396,22 +394,23 @@ class SubscriptionManager: ObservableObject {
 
         // Find corresponding subscription
         guard let subscription = subscriptions.first(where: { $0.groupId == groupId }) else {
-            print("Subscription not found - groupId: \(groupId)")
             return
         }
 
-        // Create notification with generated message
+        // Create notification with initial message (may use pubkey prefix)
+        let initialMessage = getNotificationMessage(for: eventKind, eventData: eventDict)
+        
         let notification = NotificationItem(
-            message: getNotificationMessage(for: eventKind, eventData: eventDict),
+            message: initialMessage,
             type: .general,
             eventJSON: eventContent,
-            authorPubkey: nil,
-            eventId: nil,
+            authorPubkey: eventDict["pubkey"] as? String,
+            eventId: eventDict["id"] as? String,
             eventKind: eventKind,
             eventCreatedAt: Date()
         )
         
-        // Update subscription
+        // Update subscription immediately with initial message
         var updatedSubscription = subscription
         updatedSubscription.notifications.insert(notification, at: 0)
         updatedSubscription.unreadCount += 1
@@ -427,6 +426,39 @@ class SubscriptionManager: ObservableObject {
             if let idx = self.subscriptions.firstIndex(where: { $0.id == updatedSubscription.id }) {
                 self.subscriptions[idx] = updatedSubscription
                 self.updateServerGroups()
+            }
+        }
+        
+        // Try to get updated message with real username async
+        NotificationMessageBuilder.messageAsync(for: eventKind, eventData: eventDict) { [weak self] updatedMessage in
+            guard let self = self else { return }
+            
+            // Only update if the message actually changed (got real username)
+            if updatedMessage != initialMessage {
+                DispatchQueue.main.async {
+                    // Find the subscription and notification to update
+                    if let subIdx = self.subscriptions.firstIndex(where: { $0.groupId == groupId }),
+                       let notificationIdx = self.subscriptions[subIdx].notifications.firstIndex(where: { $0.id == notification.id }) {
+                        
+                        // Update the notification message
+                        var updatedNotification = self.subscriptions[subIdx].notifications[notificationIdx]
+                        updatedNotification.message = updatedMessage
+                        self.subscriptions[subIdx].notifications[notificationIdx] = updatedNotification
+                        
+                        // Update latest message if this is the most recent notification
+                        if notificationIdx == 0 {
+                            self.subscriptions[subIdx].latestMessage = updatedMessage
+                        }
+                        
+                        // Update database
+                        self.databaseManager.updateNotificationMessage(
+                            notificationId: notification.id,
+                            newMessage: updatedMessage
+                        )
+                        
+                        self.updateServerGroups()
+                    }
+                }
             }
         }
     }

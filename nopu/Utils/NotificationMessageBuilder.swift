@@ -24,14 +24,24 @@ struct NotificationMessageBuilder {
             return "New message: \(content)"
         case 7:
             if let pubkey = eventData["pubkey"] as? String {
-                return "\(pubkey.prefix(8)) liked: \(content)"
+                let displayName = UserProfileManager.shared.getCachedDisplayName(for: pubkey)
+                
+                // Trigger async fetch to update cache for future use
+                UserProfileManager.shared.prefetchUserProfile(pubkey: pubkey)
+                
+                return "\(displayName) liked: \(content)"
             }
             return "Received a like"
         case 1059:
             return "Received a direct message"
         case 6:
             if let pubkey = eventData["pubkey"] as? String {
-                return "\(pubkey.prefix(8)) reposted your message"
+                let displayName = UserProfileManager.shared.getCachedDisplayName(for: pubkey)
+                
+                // Trigger async fetch to update cache for future use
+                UserProfileManager.shared.prefetchUserProfile(pubkey: pubkey)
+                
+                return "\(displayName) reposted your message"
             }
             return "Message was reposted"
         case 9735:
@@ -42,6 +52,59 @@ struct NotificationMessageBuilder {
             return "Received a Zap"
         default:
             return "Received a new notification"
+        }
+    }
+    
+    /// Asynchronously get message content, will update message after getting username
+    static func messageAsync(for eventKind: Int, eventData: [String: Any], completion: @escaping (String) -> Void) {
+        let tags = eventData["tags"] as? [[String]] ?? []
+        let content = eventData["content"] as? String ?? ""
+
+        func tagValue(_ name: String) -> String? {
+            for tag in tags where tag.count >= 2 && tag[0] == name {
+                return tag[1]
+            }
+            return nil
+        }
+
+        switch eventKind {
+        case 1:
+            if tagValue("p") != nil {
+                if tagValue("q") != nil {
+                    completion("Quote reposted your message: \(content)")
+                } else {
+                    completion("Replied to your message: \(content)")
+                }
+            } else {
+                completion("New message: \(content)")
+            }
+        case 7:
+            if let pubkey = eventData["pubkey"] as? String {
+                UserProfileManager.shared.getDisplayName(for: pubkey) { displayName in
+                    completion("\(displayName) liked: \(content)")
+                }
+            } else {
+                completion("Received a like")
+            }
+        case 1059:
+            completion("Received a direct message")
+        case 6:
+            if let pubkey = eventData["pubkey"] as? String {
+                UserProfileManager.shared.getDisplayName(for: pubkey) { displayName in
+                    completion("\(displayName) reposted your message")
+                }
+            } else {
+                completion("Message was reposted")
+            }
+        case 9735:
+            if let _ = tagValue("p"), let bolt11 = tagValue("bolt11") {
+                let sats = EventProcessor.shared.parseBolt11Amount(bolt11) ?? 0
+                completion("Received \(sats) sats via Zap")
+            } else {
+                completion("Received a Zap")
+            }
+        default:
+            completion("Received a new notification")
         }
     }
 } 

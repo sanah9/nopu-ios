@@ -9,7 +9,7 @@ import Foundation
 
 struct NotificationItem: Identifiable, Codable {
     let id: UUID
-    let message: String
+    var message: String
     let receivedAt: Date
     var isRead: Bool
     let type: NotificationType
