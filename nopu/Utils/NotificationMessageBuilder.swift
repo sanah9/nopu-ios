@@ -18,17 +18,27 @@ struct NotificationMessageBuilder {
         
         switch eventKind {
         case 1:
-            if tagValue("p", from: tags) != nil {
-                if tagValue("q", from: tags) != nil {
-                    let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
-                    return "Quote reposted your message: \(processedContent)"
-                } else {
-                    let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
-                    return "Replied to your message: \(processedContent)"
-                }
-            }
             let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
-            return "New message: \(processedContent)"
+            if !displayName.isEmpty {
+                if tagValue("p", from: tags) != nil {
+                    if tagValue("q", from: tags) != nil {
+                        return "\(displayName) quote reposted your message: \(processedContent)"
+                    } else {
+                        return "\(displayName) replied to your message: \(processedContent)"
+                    }
+                }
+                return "\(displayName) sent a new message: \(processedContent)"
+            } else {
+                // Original logic for when displayName is not available
+                if tagValue("p", from: tags) != nil {
+                    if tagValue("q", from: tags) != nil {
+                        return "Quote reposted your message: \(processedContent)"
+                    } else {
+                        return "Replied to your message: \(processedContent)"
+                    }
+                }
+                return "New message: \(processedContent)"
+            }
         case 7:
             let formattedContent = CustomEmojiManager.shared.formatReactionContent(content, emojiMap: emojiMap)
             return "\(displayName) liked your note: \(formattedContent)"
@@ -39,7 +49,14 @@ struct NotificationMessageBuilder {
         case 9735:
             if let _ = tagValue("p", from: tags), let bolt11 = tagValue("bolt11", from: tags) {
                 let sats = EventProcessor.shared.parseBolt11Amount(bolt11) ?? 0
-                return "Received \(sats) sats via Zap"
+                if !displayName.isEmpty {
+                    return "\(displayName) zapped you: \(sats) sats"
+                } else {
+                    return "Received \(sats) sats via Zap"
+                }
+            }
+            if !displayName.isEmpty {
+                return "\(displayName) zapped you"
             }
             return "Received a Zap"
         default:
@@ -51,39 +68,29 @@ struct NotificationMessageBuilder {
     
     static func message(for eventKind: Int, eventData: [String: Any]) -> String {
         // Handle cases that need pubkey
-        if eventKind == 7 || eventKind == 6 {
-            if let pubkey = eventData["pubkey"] as? String {
-                let displayName = UserProfileManager.shared.getCachedDisplayName(for: pubkey)
-                
-                // Trigger async fetch to update cache for future use
-                UserProfileManager.shared.prefetchUserProfile(pubkey: pubkey)
-                
-                return buildMessage(for: eventKind, eventData: eventData, displayName: displayName)
-            } else {
-                // Fallback messages
-                return eventKind == 7 ? "Received a like" : "Message was reposted"
-            }
+        if (eventKind == 1 || eventKind == 6 || eventKind == 7 || eventKind == 9735), let pubkey = eventData["pubkey"] as? String {
+            let displayName = UserProfileManager.shared.getCachedDisplayName(for: pubkey)
+            
+            // Trigger async fetch to update cache for future use
+            UserProfileManager.shared.prefetchUserProfile(pubkey: pubkey)
+            
+            return buildMessage(for: eventKind, eventData: eventData, displayName: displayName)
         }
         
-        // For other event types, displayName is not used
+        // For other event types or if pubkey is missing, displayName is not used
         return buildMessage(for: eventKind, eventData: eventData, displayName: "")
     }
     
     /// Asynchronously get message content, will update message after getting username
     static func messageAsync(for eventKind: Int, eventData: [String: Any], completion: @escaping (String) -> Void) {
         // Handle cases that need pubkey
-        if eventKind == 7 || eventKind == 6 {
-            if let pubkey = eventData["pubkey"] as? String {
-                UserProfileManager.shared.getDisplayName(for: pubkey) { displayName in
-                    let message = buildMessage(for: eventKind, eventData: eventData, displayName: displayName)
-                    completion(message)
-                }
-            } else {
-                // Fallback messages
-                completion(eventKind == 7 ? "Received a like" : "Message was reposted")
+        if (eventKind == 1 || eventKind == 6 || eventKind == 7 || eventKind == 9735), let pubkey = eventData["pubkey"] as? String {
+            UserProfileManager.shared.getDisplayName(for: pubkey) { displayName in
+                let message = buildMessage(for: eventKind, eventData: eventData, displayName: displayName)
+                completion(message)
             }
         } else {
-            // For other event types, displayName is not used
+            // For other event types or if pubkey is missing, displayName is not used
             let message = buildMessage(for: eventKind, eventData: eventData, displayName: "")
             completion(message)
         }
