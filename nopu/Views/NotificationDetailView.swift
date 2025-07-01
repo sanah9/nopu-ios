@@ -8,41 +8,53 @@
 import SwiftUI
 
 struct NotificationDetailView: View {
-    let subscription: Subscription
+    let subscriptionId: UUID // Change to store ID instead of subscription object
     @ObservedObject var subscriptionManager: SubscriptionManager
     @State private var selectedNotification: NotificationItem?
     @State private var showingEditView = false
     @State private var visibleRange: Range<Int> = 0..<0 // Empty range by default; will be initialized in onAppear
+    @State private var refreshTrigger = 0 // Add refresh trigger
+    
+    // Computed property to get current subscription
+    private var subscription: Subscription? {
+        subscriptionManager.subscriptions.first { $0.id == subscriptionId }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
-            if subscription.notifications.isEmpty {
-                EmptyNotificationView()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(subscription.notifications.prefix(visibleRange.upperBound).enumerated()), id: \.1.id) { index, notification in
-                            NotificationItemRow(
-                                notification: notification,
-                                onTap: {
-                                    selectedNotification = notification
-                                }
-                            )
-                            .equatable()
-                            .id(notification.id) // Preserve scroll position
-                            .onAppear {
-                                // Load more when scrolling near the bottom
-                                if index >= visibleRange.upperBound - 5 && visibleRange.upperBound < subscription.notifications.count {
-                                    loadMore()
+            if let subscription = subscription {
+                if subscription.notifications.isEmpty {
+                    EmptyNotificationView()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(subscription.notifications.prefix(visibleRange.upperBound).enumerated()), id: \.1.id) { index, notification in
+                                NotificationItemRow(
+                                    notification: notification,
+                                    onTap: {
+                                        selectedNotification = notification
+                                    }
+                                )
+                                .equatable()
+                                .id("\(notification.id)-\(refreshTrigger)") // Include refresh trigger in ID
+                                .onAppear {
+                                    // Load more when scrolling near the bottom
+                                    if index >= visibleRange.upperBound - 5 && visibleRange.upperBound < subscription.notifications.count {
+                                        loadMore()
+                                    }
                                 }
                             }
                         }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                 }
+            } else {
+                // Subscription not found
+                Text("Subscription not found")
+                    .foregroundColor(.secondary)
             }
         }
-        .navigationTitle(subscription.topicName)
+        .navigationTitle(subscription?.topicName ?? "Notifications")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -50,10 +62,11 @@ struct NotificationDetailView: View {
                     showingEditView = true
                 }
                 .foregroundColor(.blue)
+                .disabled(subscription == nil)
             }
             
             ToolbarItem(placement: .navigationBarTrailing) {
-                if !subscription.notifications.isEmpty {
+                if let subscription = subscription, !subscription.notifications.isEmpty {
                     Button("Mark All Read") {
                         subscriptionManager.markAsRead(id: subscription.id)
                     }
@@ -64,23 +77,31 @@ struct NotificationDetailView: View {
         }
         .onAppear {
             // Mark as read and initialize visible range when the view appears
-            subscriptionManager.markAsRead(id: subscription.id)
-            let initialUpperBound = min(20, subscription.notifications.count)
-            visibleRange = 0..<initialUpperBound
+            if let subscription = subscription {
+                subscriptionManager.markAsRead(id: subscription.id)
+                let initialUpperBound = min(20, subscription.notifications.count)
+                visibleRange = 0..<initialUpperBound
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserProfileManager.profileUpdatedNotification)) { _ in
+            // Trigger view refresh when user profiles are updated
+            refreshTrigger += 1
         }
         .sheet(item: $selectedNotification) { notification in
             NotificationEventDetailView(notification: notification)
         }
         .sheet(isPresented: $showingEditView) {
-            EditSubscriptionView(
-                subscription: subscription,
-                subscriptionManager: subscriptionManager
-            )
+            if let subscription = subscription {
+                EditSubscriptionView(
+                    subscription: subscription,
+                    subscriptionManager: subscriptionManager
+                )
+            }
         }
     }
     
     private func loadMore() {
-        let newUpperBound = min(visibleRange.upperBound + 20, subscription.notifications.count)
+        let newUpperBound = min(visibleRange.upperBound + 20, subscription?.notifications.count ?? 0)
         visibleRange = visibleRange.lowerBound..<newUpperBound
     }
 }
@@ -118,7 +139,9 @@ struct NotificationItemRow: View, Equatable {
     
     // MARK: - Equatable
     static func == (lhs: NotificationItemRow, rhs: NotificationItemRow) -> Bool {
-        lhs.notification.id == rhs.notification.id && lhs.notification.isRead == rhs.notification.isRead
+        lhs.notification.id == rhs.notification.id && 
+        lhs.notification.isRead == rhs.notification.isRead &&
+        lhs.notification.message == rhs.notification.message
     }
     
     var body: some View {

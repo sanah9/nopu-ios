@@ -49,7 +49,7 @@ struct NotificationView: View {
                     List {
                         ForEach(subscriptionManager.subscriptions) { subscription in
                             NavigationLink(destination: NotificationDetailView(
-                                subscription: subscription,
+                                subscriptionId: subscription.id,
                                 subscriptionManager: subscriptionManager
                             )) {
                                 SubscriptionRowContent(subscription: subscription)
