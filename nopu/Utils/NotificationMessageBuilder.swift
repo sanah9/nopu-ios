@@ -35,7 +35,7 @@ struct NotificationMessageBuilder {
 
     /// The core logic for constructing the final notification message string.
     /// It determines the message template based on the event kind and fills it with the appropriate data.
-    private static func buildMessage(for eventKind: Int, eventData: [String: Any], displayName: String) -> String {
+    static func buildMessage(for eventKind: Int, eventData: [String: Any], displayName: String) -> String {
         let tags = eventData["tags"] as? [[String]] ?? []
         let content = eventData["content"] as? String ?? ""
         let hasDisplayName = !displayName.isEmpty
@@ -74,11 +74,24 @@ struct NotificationMessageBuilder {
             return "\(author) reposted your message"
             
         case 9735:
+            let processedContent = processContent(content, tags: tags)
+            let contentSuffix = !processedContent.isEmpty ? ": \(processedContent)" : ""
+
             if let _ = tagValue("p", from: tags), let bolt11 = tagValue("bolt11", from: tags) {
                 let sats = EventProcessor.shared.parseBolt11Amount(bolt11) ?? 0
-                return hasDisplayName ? "\(displayName) zapped you: \(sats) sats" : "Received \(sats) sats via Zap"
+                if hasDisplayName {
+                    return "\(displayName) zapped you \(sats) sats\(contentSuffix)"
+                } else {
+                    return "Received \(sats) sats via Zap\(contentSuffix)"
+                }
             }
-            return hasDisplayName ? "\(displayName) zapped you" : "Received a Zap"
+            
+            // Fallback for zaps without amount information
+            if hasDisplayName {
+                return "\(displayName) zapped you\(contentSuffix)"
+            } else {
+                return "Received a Zap\(contentSuffix)"
+            }
 
         case 1059:
             return "Received a direct message"
@@ -93,6 +106,23 @@ struct NotificationMessageBuilder {
     /// Generates a notification message synchronously using a cached display name.
     /// This method provides an immediate message and triggers a background profile update.
     static func message(for eventKind: Int, eventData: [String: Any]) -> String {
+        // Special handling for kind 9735 (Zap) - use P tag for sender pubkey
+        if eventKind == 9735 {
+            let tags = eventData["tags"] as? [[String]] ?? []
+            if let senderPubkey = tagValue("P", from: tags) {
+                // Trigger a background fetch to update the profile cache for future use.
+                UserProfileManager.shared.prefetchUserProfile(pubkey: senderPubkey)
+                
+                // Immediately return a message with the currently cached name (or pubkey prefix).
+                let cachedDisplayName = UserProfileManager.shared.getCachedDisplayName(for: senderPubkey)
+                return buildMessage(for: eventKind, eventData: eventData, displayName: cachedDisplayName)
+            } else {
+                // No P tag found, build message without sender name
+                return buildMessage(for: eventKind, eventData: eventData, displayName: "")
+            }
+        }
+        
+        // For other event kinds that need pubkey
         guard let pubkey = eventData["pubkey"] as? String, kindsRequiringDisplayName.contains(eventKind) else {
             // For events that don't need a name or if pubkey is missing, build with an empty name.
             return buildMessage(for: eventKind, eventData: eventData, displayName: "")
@@ -109,6 +139,24 @@ struct NotificationMessageBuilder {
     /// Generates a notification message asynchronously, fetching the latest display name.
     /// Use this to update an existing notification with the proper user name.
     static func messageAsync(for eventKind: Int, eventData: [String: Any], completion: @escaping (String) -> Void) {
+        // Special handling for kind 9735 (Zap) - use P tag for sender pubkey
+        if eventKind == 9735 {
+            let tags = eventData["tags"] as? [[String]] ?? []
+            if let senderPubkey = tagValue("P", from: tags) {
+                // Fetch the latest display name and then build the message.
+                UserProfileManager.shared.getDisplayName(for: senderPubkey) { fetchedDisplayName in
+                    let message = buildMessage(for: eventKind, eventData: eventData, displayName: fetchedDisplayName)
+                    completion(message)
+                }
+            } else {
+                // No P tag found, build message without sender name
+                let message = buildMessage(for: eventKind, eventData: eventData, displayName: "")
+                completion(message)
+            }
+            return
+        }
+        
+        // For other event kinds that need pubkey
         guard let pubkey = eventData["pubkey"] as? String, kindsRequiringDisplayName.contains(eventKind) else {
             // For events that don't need a name, complete with the basic message.
             let message = buildMessage(for: eventKind, eventData: eventData, displayName: "")

@@ -60,6 +60,18 @@ class SubscriptionManager: ObservableObject {
                 self?.handleEvent20284(eventString)
             }
         }
+        
+        // Listen for user profile updates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleProfileUpdate(_:)),
+            name: UserProfileManager.profileUpdatedNotification,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     private func loadSubscriptions() {
@@ -485,6 +497,91 @@ class SubscriptionManager: ObservableObject {
         } else {
             let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
             completion(eventId != nil)
+        }
+    }
+    
+    @objc private func handleProfileUpdate(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let updatedPubkey = userInfo["pubkey"] as? String,
+              let profile = userInfo["profile"] as? UserProfile else {
+            return
+        }
+        
+        // Find notifications that need to be updated
+        var hasUpdates = false
+        
+        for (subIdx, subscription) in subscriptions.enumerated() {
+            for (notifIdx, notificationItem) in subscription.notifications.enumerated() {
+                // Check if this notification involves the updated user
+                var shouldUpdate = false
+                var relevantPubkey: String? = nil
+                
+                // For different event kinds, check different pubkey sources
+                switch notificationItem.eventKind ?? 1 {
+                case 9735: // Zap - check P tag for sender
+                    if let eventJSON = notificationItem.eventJSON,
+                       let eventData = eventJSON.data(using: .utf8),
+                       let eventDict = try? JSONSerialization.jsonObject(with: eventData) as? [String: Any],
+                       let tags = eventDict["tags"] as? [[String]] {
+                        
+                        // Look for P tag (zap sender)
+                        for tag in tags where tag.count >= 2 && tag[0] == "P" {
+                            if tag[1] == updatedPubkey {
+                                shouldUpdate = true
+                                relevantPubkey = updatedPubkey
+                                break
+                            }
+                        }
+                    }
+                    
+                case 1, 6, 7: // Notes, reposts, reactions - check event pubkey
+                    if notificationItem.authorPubkey == updatedPubkey {
+                        shouldUpdate = true
+                        relevantPubkey = updatedPubkey
+                    }
+                    
+                default:
+                    break
+                }
+                
+                if shouldUpdate, let pubkey = relevantPubkey {
+                    // Regenerate the message with updated profile
+                    if let eventJSON = notificationItem.eventJSON,
+                       let eventData = eventJSON.data(using: .utf8),
+                       let eventDict = try? JSONSerialization.jsonObject(with: eventData) as? [String: Any] {
+                        
+                        let displayName = profile.displayName
+                        let newMessage = NotificationMessageBuilder.buildMessage(
+                            for: notificationItem.eventKind ?? 1,
+                            eventData: eventDict,
+                            displayName: displayName
+                        )
+                        
+                        // Only update if message actually changed
+                        if newMessage != notificationItem.message {
+                            subscriptions[subIdx].notifications[notifIdx].message = newMessage
+                            
+                            // Update latest message if this is the most recent notification
+                            if notifIdx == 0 {
+                                subscriptions[subIdx].latestMessage = newMessage
+                            }
+                            
+                            // Update database
+                            databaseManager.updateNotificationMessage(
+                                notificationId: notificationItem.id,
+                                newMessage: newMessage
+                            )
+                            
+                            hasUpdates = true
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Trigger UI update if any notifications were updated
+        if hasUpdates {
+            updateServerGroups()
         }
     }
 } 

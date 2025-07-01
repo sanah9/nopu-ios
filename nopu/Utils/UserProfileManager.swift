@@ -21,6 +21,9 @@ class UserProfileManager: ObservableObject {
         "wss://yabu.me"
     ]
     
+    // Notification for profile updates
+    static let profileUpdatedNotification = Notification.Name("UserProfileUpdated")
+    
     private init() {
         loadCacheFromUserDefaults()
         setupProfileRelayPool()
@@ -192,6 +195,15 @@ class UserProfileManager: ObservableObject {
     private func cacheProfile(_ profile: UserProfile) {
         profileCache[profile.pubkey] = profile
         saveCacheToUserDefaults()
+        
+        // Send notification that profile was updated
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: UserProfileManager.profileUpdatedNotification,
+                object: nil,
+                userInfo: ["pubkey": profile.pubkey, "profile": profile]
+            )
+        }
     }
     
     // MARK: - Persistence
