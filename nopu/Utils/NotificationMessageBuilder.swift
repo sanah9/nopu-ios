@@ -19,18 +19,23 @@ struct NotificationMessageBuilder {
     }
     
     /// A centralized place to process general event content.
-    /// This is where custom emoji and future 'nostr:' scheme parsing will happen.
+    /// This is where custom emoji and NIP-19/NIP-21 parsing happens.
     private static func processContent(_ content: String, tags: [[String]]) -> String {
         let emojiMap = CustomEmojiManager.shared.parseEmojiTags(from: tags)
         let processedContent = CustomEmojiManager.shared.processContent(content, emojiMap: emojiMap)
-        // TODO: Add parsing for nostr: schemes here in the future.
-        return processedContent
+        
+        // Parse NIP-19 and NIP-21 identifiers and replace with @username format
+        // Use safe processing to avoid crashes
+        return processNostrIdentifiersSafely(processedContent)
     }
     
     /// A specific formatter for reaction content, which can be just an emoji or a short string.
     private static func formatReactionContent(_ content: String, tags: [[String]]) -> String {
         let emojiMap = CustomEmojiManager.shared.parseEmojiTags(from: tags)
-        return CustomEmojiManager.shared.formatReactionContent(content, emojiMap: emojiMap)
+        let formattedContent = CustomEmojiManager.shared.formatReactionContent(content, emojiMap: emojiMap)
+        
+        // Parse NIP-19 and NIP-21 identifiers for reactions too
+        return processNostrIdentifiersSafely(formattedContent)
     }
 
     /// The core logic for constructing the final notification message string.
@@ -168,6 +173,129 @@ struct NotificationMessageBuilder {
         UserProfileManager.shared.getDisplayName(for: pubkey) { fetchedDisplayName in
             let message = buildMessage(for: eventKind, eventData: eventData, displayName: fetchedDisplayName)
             completion(message)
+        }
+    }
+    
+    /// Generates a notification message with enhanced NIP-19/NIP-21 processing.
+    /// This version processes identifiers in content asynchronously for better user experience.
+    static func messageWithNIP19Async(for eventKind: Int, eventData: [String: Any], completion: @escaping (String) -> Void) {
+        let content = eventData["content"] as? String ?? ""
+        let tags = eventData["tags"] as? [[String]] ?? []
+        
+        // First, build the basic message structure
+        let basicMessage = buildMessage(for: eventKind, eventData: eventData, displayName: "")
+        
+        // Check if content contains NIP-19/NIP-21 identifiers
+        let identifiers = NIP19Parser.shared.extractIdentifiers(from: content)
+        let hasIdentifiers = !identifiers.filter { $0.type == .npub || $0.type == .nprofile || $0.type == .hex }.isEmpty
+        
+        if !hasIdentifiers {
+            // No identifiers to process, return basic message
+            completion(basicMessage)
+            return
+        }
+        
+        // Process identifiers asynchronously
+        processNostrIdentifiersAsync(content) { processedContent in
+            // Rebuild message with processed content
+            var updatedEventData = eventData
+            updatedEventData["content"] = processedContent
+            
+            let finalMessage = buildMessage(for: eventKind, eventData: updatedEventData, displayName: "")
+            completion(finalMessage)
+        }
+    }
+    
+    // MARK: - NIP-19 and NIP-21 Processing
+    
+    /// Process NIP-19 and NIP-21 identifiers in content and replace with @username format
+    private static func processNostrIdentifiers(_ content: String) -> String {
+        var processedContent = content
+        let identifiers = NIP19Parser.shared.extractIdentifiers(from: content)
+        
+        // Group identifiers by pubkey to avoid duplicate fetches
+        let pubkeyIdentifiers = identifiers.filter { $0.type == .npub || $0.type == .nprofile || $0.type == .hex }
+        let uniquePubkeys = Set(pubkeyIdentifiers.map { $0.identifier })
+        
+        // Create replacements map
+        var replacements: [String: String] = [:]
+        
+        for pubkey in uniquePubkeys {
+            let displayName = UserProfileManager.shared.getCachedDisplayName(for: pubkey)
+            let replacement = "@\(displayName)"
+            
+            // Find all identifiers for this pubkey
+            for identifier in pubkeyIdentifiers where identifier.identifier == pubkey {
+                replacements[identifier.original] = replacement
+            }
+            
+            // Trigger background fetch for the pubkey
+            UserProfileManager.shared.prefetchUserProfile(pubkey: pubkey)
+        }
+        
+        // Apply all replacements safely
+        for (original, replacement) in replacements {
+            processedContent = processedContent.replacingOccurrences(of: original, with: replacement)
+        }
+        
+        return processedContent
+    }
+    
+    /// Safe version of processNostrIdentifiers that catches any errors and returns original content
+    static func processNostrIdentifiersSafely(_ content: String) -> String {
+        do {
+            return processNostrIdentifiers(content)
+        } catch {
+            // If any error occurs, return the original content
+            print("[NotificationMessageBuilder] Error processing NIP-19 identifiers: \(error)")
+            return content
+        }
+    }
+    
+    /// Process NIP-19 and NIP-21 identifiers asynchronously for better user experience
+    private static func processNostrIdentifiersAsync(_ content: String, completion: @escaping (String) -> Void) {
+        // Use safe processing to avoid crashes
+        do {
+            let identifiers = NIP19Parser.shared.extractIdentifiers(from: content)
+            var processedContent = content
+            
+            // Group identifiers by pubkey to avoid duplicate fetches
+            let pubkeyIdentifiers = identifiers.filter { $0.type == .npub || $0.type == .nprofile || $0.type == .hex }
+            let uniquePubkeys = Set(pubkeyIdentifiers.map { $0.identifier })
+            
+            if uniquePubkeys.isEmpty {
+                completion(content)
+                return
+            }
+            
+            // Create a dispatch group to wait for all profile fetches
+            let group = DispatchGroup()
+            var replacements: [String: String] = [:] // original -> @username
+            
+            for pubkey in uniquePubkeys {
+                group.enter()
+                
+                UserProfileManager.shared.getDisplayName(for: pubkey) { displayName in
+                    // Find all identifiers for this pubkey
+                    for identifier in pubkeyIdentifiers where identifier.identifier == pubkey {
+                        let replacement = "@\(displayName)"
+                        replacements[identifier.original] = replacement
+                    }
+                    group.leave()
+                }
+            }
+            
+            group.notify(queue: .main) {
+                // Apply all replacements safely
+                for (original, replacement) in replacements {
+                    processedContent = processedContent.replacingOccurrences(of: original, with: replacement)
+                }
+                completion(processedContent)
+            }
+        } catch {
+            // If any error occurs, return the original content
+            print("[NotificationMessageBuilder] Error in async NIP-19 processing: \(error)")
+            completion(content)
         }
     }
 } 

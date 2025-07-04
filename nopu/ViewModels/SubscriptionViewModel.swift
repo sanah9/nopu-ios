@@ -224,40 +224,10 @@ class SubscriptionViewModel: ObservableObject {
     
     /// Convert `npub...` bech32-encoded public key to hex string. Returns original string on failure.
     private func npubToHexIfNeeded(_ value: String) -> String {
-        guard value.lowercased().hasPrefix("npub") else { return value }
-        do {
-            let (_, data5) = try Bech32.decode(value)
-
-            guard let bytes = convertBits5to8(data5) else {
-                return value
-            }
-            return bytes.map { String(format: "%02x", $0) }.joined()
-        } catch {
-            print("[SubscriptionViewModel] Failed npub->hex conversion: \(error)")
-            return value // fallback
-        }
+        return NIP19Parser.shared.toHex(value) ?? value
     }
     
-    /// Convert 5-bit words to 8-bit byte array (no padding). Return nil on invalid input.
-    private func convertBits5to8(_ data: Data) -> [UInt8]? {
-        var acc = 0
-        var bits = 0
-        var result: [UInt8] = []
-        for v in data {
-            if v >> 5 != 0 { // value must be less than 32
-                return nil
-            }
-            acc = (acc << 5) | Int(v)
-            bits += 5
-            while bits >= 8 {
-                bits -= 8
-                let byte = UInt8((acc >> bits) & 0xFF)
-                result.append(byte)
-            }
-        }
-        // discard remaining bits (no padding)
-        return result
-    }
+
     
     // MARK: - Filter Building
     
