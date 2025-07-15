@@ -16,6 +16,8 @@ struct SettingsView: View {
     @State private var currentUserAbout: String = ""
     @State private var currentUserPicture: String = ""
     
+    private let randomNameKey = "CachedRandomUserName"
+    
     var body: some View {
         NavigationView {
             Form {
@@ -42,7 +44,7 @@ struct SettingsView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(currentUserDisplayName.isEmpty ? generateRandomName() : currentUserDisplayName)
+                            Text(currentUserDisplayName.isEmpty ? getOrGenerateRandomName() : currentUserDisplayName)
                                 .font(.headline)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if !currentUserNpub.isEmpty {
@@ -191,15 +193,18 @@ struct SettingsView: View {
         }
     }
     
-    // Generate a random username
-    private func generateRandomName() -> String {
+    // Generate or get cached random username
+    private func getOrGenerateRandomName() -> String {
+        if let cached = UserDefaults.standard.string(forKey: randomNameKey) {
+            return cached
+        }
         let adjectives = ["Swift", "Bright", "Clever", "Witty", "Smart", "Quick", "Sharp", "Bright", "Clever", "Witty"]
         let nouns = ["User", "Person", "Member", "Friend", "Buddy", "Pal", "Mate", "Comrade", "Fellow", "Citizen"]
-        
         let randomAdjective = adjectives.randomElement() ?? "Swift"
         let randomNoun = nouns.randomElement() ?? "User"
         let randomNumber = Int.random(in: 100...999)
-        
-        return "\(randomAdjective)\(randomNoun)\(randomNumber)"
+        let name = "\(randomAdjective)\(randomNoun)\(randomNumber)"
+        UserDefaults.standard.set(name, forKey: randomNameKey)
+        return name
     }
 } 
