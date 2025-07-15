@@ -89,6 +89,11 @@ class UserProfileManager: ObservableObject {
         return String(pubkey.prefix(8))
     }
     
+    /// Synchronously get cached user profile
+    func getCachedProfile(for pubkey: String) -> UserProfile? {
+        return profileCache[pubkey]
+    }
+    
     /// Prefetch user profile (always fetch latest)
     func prefetchUserProfile(pubkey: String) {
         fetchUserProfile(pubkey: pubkey) { [weak self] profile in

@@ -260,6 +260,63 @@ class NIP19Parser {
         }
         return nil
     }
+    
+    /// Convert hex pubkey to npub format
+    func hexToNpub(_ hexPubkey: String) -> String? {
+        guard hexPubkey.count == 64,
+              hexPubkey.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil else {
+            return nil
+        }
+        
+        // Convert hex string to bytes
+        var bytes: [UInt8] = []
+        for i in stride(from: 0, to: hexPubkey.count, by: 2) {
+            let start = hexPubkey.index(hexPubkey.startIndex, offsetBy: i)
+            let end = hexPubkey.index(start, offsetBy: 2, limitedBy: hexPubkey.endIndex) ?? hexPubkey.endIndex
+            let hexByte = String(hexPubkey[start..<end])
+            if let byte = UInt8(hexByte, radix: 16) {
+                bytes.append(byte)
+            }
+        }
+        
+        guard bytes.count == 32 else { return nil }
+        
+        // Convert to 5-bit words
+        let data5 = convertBits8to5(bytes)
+        
+        // Encode with bech32
+        do {
+            let npub = try Bech32.encode(hrp: "npub", data: data5)
+            return npub
+        } catch {
+            return nil
+        }
+    }
+    
+    /// Convert 8-bit bytes to 5-bit words
+    private func convertBits8to5(_ data: [UInt8]) -> [UInt8] {
+        var acc = 0
+        var bits = 0
+        var result: [UInt8] = []
+        
+        for byte in data {
+            acc = (acc << 8) | Int(byte)
+            bits += 8
+            while bits >= 5 {
+                bits -= 5
+                let word = UInt8((acc >> bits) & 0x1F)
+                result.append(word)
+            }
+        }
+        
+        // Handle remaining bits
+        if bits > 0 {
+            let word = UInt8((acc << (5 - bits)) & 0x1F)
+            result.append(word)
+        }
+        
+        return result
+    }
 }
 
 // MARK: - Data Structures
@@ -291,6 +348,25 @@ struct NostrIdentifier {
 struct Bech32 {
     private static let charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
     private static let generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+    
+    static func encode(hrp: String, data: [UInt8]) throws -> String {
+        // Expand HRP
+        var values = expandHRP(hrp)
+        values.append(contentsOf: data)
+        
+        // Calculate checksum
+        let checksum = calculateChecksum(hrp: hrp, data: data)
+        values.append(contentsOf: checksum)
+        
+        // Convert to string
+        var result = hrp + "1"
+        for value in values {
+            let index = charset.index(charset.startIndex, offsetBy: Int(value))
+            result.append(charset[index])
+        }
+        
+        return result
+    }
     
     static func decode(_ bech32String: String) throws -> (String, Data) {
         guard bech32String.count >= 8 else {
@@ -366,6 +442,21 @@ struct Bech32 {
         }
         
         return chk
+    }
+    
+    private static func calculateChecksum(hrp: String, data: [UInt8]) -> [UInt8] {
+        var values = expandHRP(hrp)
+        values.append(contentsOf: data)
+        values.append(contentsOf: [0, 0, 0, 0, 0, 0]) // Append 6 zeros
+        
+        let polymod = polymod(values) ^ 1
+        
+        var checksum: [UInt8] = []
+        for i in 0..<6 {
+            checksum.append(UInt8((polymod >> (5 * (5 - i))) & 0x1F))
+        }
+        
+        return checksum
     }
 }
 
