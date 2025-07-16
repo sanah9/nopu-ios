@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("defaultServerURL") private var selectedServer: String = AppConfig.defaultServerURL
     @State private var showingComingSoonAlert = false
+    @State private var showingUserProfileDetail = false
     @State private var currentUserPubkey: String = ""
     @State private var currentUserNpub: String = ""
     @State private var currentUserDisplayName: String = ""
@@ -24,46 +25,56 @@ struct SettingsView: View {
                 // User Profile Section
                 Section(header: Text("USER PROFILE")) {
                     // User avatar and basic info
-                    HStack {
-                        if !currentUserPicture.isEmpty {
-                            AsyncImage(url: URL(string: currentUserPicture)) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
+                    Button(action: {
+                        showingUserProfileDetail = true
+                    }) {
+                        HStack {
+                            if !currentUserPicture.isEmpty {
+                                AsyncImage(url: URL(string: currentUserPicture)) { image in
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    Image(systemName: "person.circle.fill")
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(width: 50, height: 50)
+                                .clipShape(Circle())
+                            } else {
                                 Image(systemName: "person.circle.fill")
+                                    .resizable()
+                                    .frame(width: 50, height: 50)
                                     .foregroundColor(.gray)
                             }
-                            .frame(width: 50, height: 50)
-                            .clipShape(Circle())
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(currentUserDisplayName.isEmpty ? getOrGenerateRandomName() : currentUserDisplayName)
-                                .font(.headline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            if !currentUserNpub.isEmpty {
-                                Text(currentUserNpub)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.leading)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(currentUserDisplayName.isEmpty ? getOrGenerateRandomName() : currentUserDisplayName)
+                                    .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 6)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(8)
-                                    .textSelection(.enabled)
-                                    .lineLimit(3)
-                                    .minimumScaleFactor(0.7)
+                                    .foregroundColor(.primary)
+                                if !currentUserNpub.isEmpty {
+                                    Text(currentUserNpub)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.leading)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.vertical, 6)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                        .textSelection(.enabled)
+                                        .lineLimit(3)
+                                        .minimumScaleFactor(0.7)
+                                }
                             }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 14, weight: .medium))
                         }
-                        
-                        Spacer()
                     }
+                    .buttonStyle(PlainButtonStyle())
                     .padding(.vertical, 4)
                     
                     // About information
@@ -141,6 +152,9 @@ struct SettingsView: View {
             .onDisappear {
                 // Remove notification observer when view disappears
                 NotificationCenter.default.removeObserver(self)
+            }
+            .sheet(isPresented: $showingUserProfileDetail) {
+                UserProfileDetailView()
             }
         }
     }

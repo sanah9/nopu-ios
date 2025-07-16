@@ -54,6 +54,19 @@ class NIP19Parser {
         return data.map { String(format: "%02x", $0) }.joined()
     }
     
+    /// Parse nsec and extract private key
+    func parseNsec(_ nsec: String) -> String? {
+        guard nsec.lowercased().hasPrefix("nsec") else { return nil }
+        
+        guard let (prefix, data) = decodeBech32(nsec),
+              prefix.lowercased() == "nsec",
+              data.count == 32 else {
+            return nil
+        }
+        
+        return data.map { String(format: "%02x", $0) }.joined()
+    }
+    
     /// Parse note and extract event ID
     func parseNote(_ note: String) -> String? {
         guard note.lowercased().hasPrefix("note") else { return nil }
@@ -112,6 +125,10 @@ class NIP19Parser {
             if let pubkey = parseNpub(content) {
                 return NIP21Data(type: .npub, identifier: pubkey, original: content)
             }
+        } else if content.hasPrefix("nsec") {
+            if let privateKey = parseNsec(content) {
+                return NIP21Data(type: .nsec, identifier: privateKey, original: content)
+            }
         } else if content.hasPrefix("note") {
             if let eventId = parseNote(content) {
                 return NIP21Data(type: .note, identifier: eventId, original: content)
@@ -147,6 +164,7 @@ class NIP19Parser {
             "nostr:([a-zA-Z0-9]+[a-zA-Z0-9]*[a-zA-Z0-9]*)",
             // NIP-19 identifiers
             "\\b(npub[a-zA-Z0-9]+)\\b",
+            "\\b(nsec[a-zA-Z0-9]+)\\b",
             "\\b(note[a-zA-Z0-9]+)\\b",
             "\\b(nprofile[a-zA-Z0-9]+)\\b",
             "\\b(nevent[a-zA-Z0-9]+)\\b",
@@ -202,6 +220,15 @@ class NIP19Parser {
                 return NostrIdentifier(
                     type: .npub,
                     identifier: pubkey,
+                    original: identifier,
+                    range: nil
+                )
+            }
+        } else if identifier.hasPrefix("nsec") {
+            if let privateKey = parseNsec(identifier) {
+                return NostrIdentifier(
+                    type: .nsec,
+                    identifier: privateKey,
                     original: identifier,
                     range: nil
                 )
@@ -293,6 +320,38 @@ class NIP19Parser {
         }
     }
     
+    /// Convert hex private key to nsec format
+    func hexToNsec(_ hexPrivateKey: String) -> String? {
+        guard hexPrivateKey.count == 64,
+              hexPrivateKey.range(of: "^[0-9a-fA-F]{64}$", options: .regularExpression) != nil else {
+            return nil
+        }
+        
+        // Convert hex string to bytes
+        var bytes: [UInt8] = []
+        for i in stride(from: 0, to: hexPrivateKey.count, by: 2) {
+            let start = hexPrivateKey.index(hexPrivateKey.startIndex, offsetBy: i)
+            let end = hexPrivateKey.index(start, offsetBy: 2, limitedBy: hexPrivateKey.endIndex) ?? hexPrivateKey.endIndex
+            let hexByte = String(hexPrivateKey[start..<end])
+            if let byte = UInt8(hexByte, radix: 16) {
+                bytes.append(byte)
+            }
+        }
+        
+        guard bytes.count == 32 else { return nil }
+        
+        // Convert to 5-bit words
+        let data5 = convertBits8to5(bytes)
+        
+        // Encode with bech32
+        do {
+            let nsec = try Bech32.encode(hrp: "nsec", data: data5)
+            return nsec
+        } catch {
+            return nil
+        }
+    }
+    
     /// Convert 8-bit bytes to 5-bit words
     private func convertBits8to5(_ data: [UInt8]) -> [UInt8] {
         var acc = 0
@@ -329,6 +388,7 @@ struct NIP21Data {
 
 enum NIP21Type {
     case npub
+    case nsec
     case note
     case nprofile
     case nevent
