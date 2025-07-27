@@ -209,6 +209,12 @@ class SubscriptionManager: ObservableObject {
             return
         }
 
+        // Check if push server is connected before attempting deletion
+        if !NostrManager.shared.isConnected {
+            self.deletionErrorMessage = "Cannot delete group: Push server not connected. Please check your network connection and try again."
+            return
+        }
+
         // 🚀 Send a kind 9008 event with h tag = groupId before cancelling the subscription
         sendDeleteGroupEvent(groupId: subscription.groupId) { [weak self] success in
             guard let self = self else { return }
@@ -218,7 +224,7 @@ class SubscriptionManager: ObservableObject {
                     self.performRemoval(subscription: subscription)
                 }
             } else {
-                self.deletionErrorMessage = "Deletion failed: Unable to send deletion event to the server. Please check your network and try again."
+                self.deletionErrorMessage = "Deletion failed: Unable to send deletion event to the server. Please check your network connection and try again."
             }
         }
     }
@@ -479,6 +485,12 @@ class SubscriptionManager: ObservableObject {
     private func sendDeleteGroupEvent(groupId: String, completion: @escaping (Bool) -> Void) {
         let deletionTags = [["h", groupId]]
         
+        // Double-check connection status before sending event
+        guard NostrManager.shared.isConnected else {
+            completion(false)
+            return
+        }
+        
         // Ensure there is at least one relay; if none, add the default relay
         if NostrManager.shared.activeRelays.isEmpty {
             let defaultRelay = UserDefaults.standard.string(forKey: "defaultServerURL") ?? AppConfig.defaultServerURL
@@ -487,17 +499,9 @@ class SubscriptionManager: ObservableObject {
             }
         }
         
-        // If not yet connected, connect first and then send the event
-        if !NostrManager.shared.isConnected {
-            NostrManager.shared.connectIfRelaysAvailable()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
-                completion(eventId != nil)
-            }
-        } else {
-            let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
-            completion(eventId != nil)
-        }
+        // Send the deletion event
+        let eventId = NostrManager.shared.publishEvent(kind: 9008, content: "", tags: deletionTags)
+        completion(eventId != nil)
     }
     
     @objc private func handleProfileUpdate(_ notification: Notification) {

@@ -11,6 +11,7 @@ struct NotificationView: View {
     @Binding var showingAddSubscription: Bool
     @ObservedObject var subscriptionManager: SubscriptionManager
     @ObservedObject private var multiRelayManager = MultiRelayPoolManager.shared
+    @ObservedObject private var nostrManager = NostrManager.shared
     @State private var showingConnectionStatus = false
     // Temporarily disabled edit functionality
     // @State private var showingEditView = false
@@ -70,6 +71,7 @@ struct NotificationView: View {
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                .disabled(!nostrManager.isConnected)
                             }
                         }
                         .onDelete(perform: deleteSubscriptions)
@@ -134,6 +136,12 @@ struct NotificationView: View {
     }
     
     private func deleteSubscriptions(offsets: IndexSet) {
+        // Check connection status before allowing deletion
+        guard nostrManager.isConnected else {
+            subscriptionManager.deletionErrorMessage = "Cannot delete group: Push server not connected. Please check your network connection and try again."
+            return
+        }
+        
         for index in offsets {
             let subscription = subscriptionManager.subscriptions[index]
             subscriptionManager.removeSubscription(id: subscription.id)
