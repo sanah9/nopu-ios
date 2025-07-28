@@ -26,7 +26,7 @@ public class MultiRelayPoolManager: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private let reconnectInterval: TimeInterval = 5.0 // Reconnect interval 5 seconds
-    private var event20284Handler: ((String) -> Void)?
+    private var nip29EventHandler: ((String) -> Void)?
     
     // MARK: - Initialization
     private init() {
@@ -165,15 +165,15 @@ public class MultiRelayPoolManager: ObservableObject {
         }
     }
     
-    func setEvent20284Handler(_ handler: @escaping (String) -> Void) {
-        event20284Handler = handler
+    func setNIP29EventHandler(_ handler: @escaping (String) -> Void) {
+        nip29EventHandler = handler
     }
     
     // Handle event
     private func handleEvent(_ event: String) {
-        // Check if it's a 20284 event
-        if event.contains("\"kind\":20284") {
-            event20284Handler?(event)
+        // Check if it's a NIP-29 event (20284 or 20285)
+        if event.contains("\"kind\":20284") || event.contains("\"kind\":20285") {
+            nip29EventHandler?(event)
         }
     }
     

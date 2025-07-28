@@ -5,8 +5,8 @@ class EventProcessor {
     
     private init() {}
     
-    func processEvent20284(_ eventString: String) -> (groupId: String, event: String)? {
-        print("Starting to parse 20284 event: \(eventString)")
+    func processNIP29Event(_ eventString: String) -> (groupId: String, event: String)? {
+        print("Starting to parse NIP-29 event: \(eventString)")
         
         // Parse event string
         guard let data = eventString.data(using: .utf8),

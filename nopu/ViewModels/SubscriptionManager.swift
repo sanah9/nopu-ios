@@ -18,7 +18,7 @@ struct ServerGroup {
     func generateNostrRequest(subscriptionId: String = UUID().uuidString) -> [Any] {
         // Build h tag filter: filter events containing any of the groupIds
         let filter: [String: Any] = [
-            "kinds": [20284], // NIP-29 group events
+            "kinds": [20284, 20285], // NIP-29 group events
             "#h": groupIds,    // h tag contains any of the groupIds
             "since": Int(Date().timeIntervalSince1970 - 3600) // Events from the last hour
         ]
@@ -29,7 +29,7 @@ struct ServerGroup {
     // Generate filter dictionary
     func generateFilterDict() -> [String: Any] {
         return [
-            "kinds": [20284], // NIP-29 group events
+            "kinds": [20284, 20285], // NIP-29 group events
             "#h": groupIds,    // h tag contains any of the groupIds
             "since": Int(Date().timeIntervalSince1970 - 3600) // Events from the last hour
         ]
@@ -54,10 +54,10 @@ class SubscriptionManager: ObservableObject {
         configureNostrManagerWithSubscriptionRelays()
         setupAutoConnections()
         
-        // Set up 20284 event handler
-        multiRelayManager.setEvent20284Handler { [weak self] eventString in
+        // Set up NIP-29 event handler
+        multiRelayManager.setNIP29EventHandler { [weak self] eventString in
             DispatchQueue.main.async {
-                self?.handleEvent20284(eventString)
+                self?.handleNIP29Event(eventString)
             }
         }
         
@@ -162,7 +162,7 @@ class SubscriptionManager: ObservableObject {
 
             // Build filter to only subscribe to the current subscription's groupId
             let filter: [String: Any] = [
-                "kinds": [20284],
+                "kinds": [20284, 20285],
                 "#h": [subscription.groupId],
                 "since": Int(Date().timeIntervalSince1970 - 3600)
             ]
@@ -328,7 +328,7 @@ class SubscriptionManager: ObservableObject {
         // Create subscription for single subscription
         let subscriptionId = "sub_\(subscription.groupId)"
         let filter: [String: Any] = [
-            "kinds": [20284],
+            "kinds": [20284, 20285],
             "#h": [subscription.groupId],
             "since": Int(Date().timeIntervalSince1970 - 3600)
         ]
@@ -395,10 +395,10 @@ class SubscriptionManager: ObservableObject {
         return NotificationMessageBuilder.message(for: eventKind, eventData: eventData)
     }
     
-    // Handle 20284 event
-    func handleEvent20284(_ eventString: String) {
+    // Handle NIP-29 event (20284 and 20285)
+    func handleNIP29Event(_ eventString: String) {
         // Parse the incoming event only once to avoid repeated JSON parsing
-        guard let (groupId, eventContent) = eventProcessor.processEvent20284(eventString) else {
+        guard let (groupId, eventContent) = eventProcessor.processNIP29Event(eventString) else {
             return
         }
 

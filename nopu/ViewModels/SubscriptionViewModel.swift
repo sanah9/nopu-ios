@@ -456,7 +456,7 @@ class SubscriptionViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     if success {
-                        // Fetch events with kind 20284 and h tag = groupId
+                        // Fetch events with kind 20284 and 20285 and h tag = groupId
                         self.fetchGroupEvents(groupId: groupId)
                         
                         // Create subscription with filter configuration
@@ -504,11 +504,11 @@ class SubscriptionViewModel: ObservableObject {
     }
     
     private func fetchGroupEvents(groupId: String) {
-        // Create filter for kind 20284 events with h tag filtering
+        // Create filter for kind 20284 and 20285 events with h tag filtering
         let filter = NostrFilter(
             ids: nil,
             authors: nil,
-            kinds: [20284],
+            kinds: [20284, 20285],
             since: UInt64(Date().timeIntervalSince1970),
             until: nil,
             limit: nil,

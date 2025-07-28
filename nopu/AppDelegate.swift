@@ -78,14 +78,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         let eventId = eventDict["kind"] as? Int ?? 0
         switch eventId {
-        case 20284:
-            processEvent20284(dict: eventDict)
+        case 20284, 20285:
+            processPushEvent(dict: eventDict)
         default:
             print("Unhandled event id (dict): \(eventId)")
         }
     }
 
-    private func processEvent20284(dict eventDict: [String: Any]) {
+    private func processPushEvent(dict eventDict: [String: Any]) {
         // Parse groupId from "h" tag
         guard let tags = eventDict["tags"] as? [[String]] else { return }
         var groupId: String?

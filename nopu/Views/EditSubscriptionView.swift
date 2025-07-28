@@ -352,6 +352,7 @@ struct EditSubscriptionView: View {
         case 1059: return "Direct Messages (1059)"
         case 9735: return "Zaps (9735)"
         case 20284: return "NIP-29 Group Events (20284)"
+        case 20285: return "NIP-29 Group Events (20285)"
         default: return "Event Kind \(kind)"
         }
     }
